@@ -73,12 +73,10 @@ Tricog-Project is a **Node.js + React + PostgreSQL** application where:
 
 ### Database  
 - PostgreSQL (with JSONB support for flexible rules & flags)  
-- SQLite (alternative for lightweight hackathon setup)  
 
 ### Dev Tools  
 - DBeaver (DB management)  
 - Postman (API testing)  
-- Figma / Canva (UI design & branding)  
 
 ---
 
@@ -114,5 +112,6 @@ flowchart TD
   C --> B
   D --> B
   G --> B
+
 
 
