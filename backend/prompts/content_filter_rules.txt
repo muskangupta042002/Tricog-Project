@@ -1,0 +1,54 @@
+CONTENT FILTERING AND SPELL CHECK RULES
+
+MALICIOUS CONTENT PATTERNS TO FILTER:
+1. Hacking/Security Threats:
+   - hack, crack, exploit, virus, malware, phishing
+   - sql injection, xss, ddos, ransomware
+
+2. Inappropriate Medical Requests:
+   - prescription, medication, drug, pill requests
+   - diagnosis, diagnose, medical advice demands
+   - treatment recommendations, cure suggestions
+
+3. Personal Information Harvesting:
+   - credit card, bank account, social security
+   - password, login credentials, personal data
+
+4. Inappropriate Content:
+   - profanity, sexual content, discriminatory language
+   - violence, harassment, threats
+
+MEDICAL TERM SPELL CORRECTIONS:
+chest pain: cheast pain, chest pane, chest payne, ches pain
+headache: head ache, hedache, head pain, hed ache
+shortness of breath: short breath, breathing problem, cant breathe
+palpitations: heart beating fast, heart racing, heart pounding
+dizziness: dizzy, light headed, lightheaded
+fatigue: tired, weakness, weak feeling
+nausea: feeling sick, want to vomit, stomach upset
+sweating: perspiration, sweats, profuse sweating
+radiating pain: pain spreading, pain going to
+sharp pain: stabbing pain, shooting pain
+dull pain: aching pain, constant pain
+
+COMMON TELUGU-ENGLISH MIX CORRECTIONS:
+chest lo pain: chest pain
+breathing problem: shortness of breath
+heart fast beating: palpitations, heart racing
+very tired feeling: fatigue, extreme tiredness
+stomach upset: nausea, stomach discomfort
+
+FILTERING ACTIONS:
+1. Replace malicious patterns with [FILTERED]
+2. Correct common medical term misspellings
+3. Standardize symptom descriptions
+4. Maintain original meaning while improving clarity
+5. Log filtered content for security monitoring
+
+EMERGENCY KEYWORD DETECTION:
+- severe, extreme, unbearable (with pain descriptors)
+- cannot breathe, can't breathe, suffocating
+- unconscious, passed out, fainted
+- crushing, squeezing (with chest pain)
+- sweating profusely, cold sweats (with chest symptoms)
+- radiating to arm, jaw pain, left arm pain
