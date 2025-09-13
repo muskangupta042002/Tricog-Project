@@ -101,17 +101,7 @@ Tricog-Project is a **Node.js + React + PostgreSQL** application where:
    - Telegram → Notify doctors  
    - Google Calendar → Auto-book appointment  
 
-```mermaid
-flowchart TD
-  A[Patient Chat UI] -->|Socket.io| B[Node.js Backend]
-  B --> C[Symptom Rules DB]
-  B --> D[AI Service (OpenAI)]
-  B --> E[Telegram Bot API]
-  B --> F[Google Calendar API]
-  B --> G[(PostgreSQL)]
-  C --> B
-  D --> B
-  G --> B
+
 
 
 
