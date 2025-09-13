@@ -104,13 +104,27 @@ async function getAIResponse(message, sessionData, patientId, chatType = 'text')
                     allQuestionsCompleted: false
                 };
             } else {
+                // Include current answer in the summary generation
+                const allAnswersForSummary = [...allPatientAnswers, {
+                    question: sessionData.lastQuestion || 'What symptoms are you experiencing?',
+                    answer: filteredMessage,
+                    timestamp: new Date(),
+                    symptom: currentSymptom
+                }];
+                
+                // Generate summary when all questions are completed
+                const summaryText = await generateSessionSummary(allAnswersForSummary, currentSymptom, patientInfo);
+                const diagnosisSuggestions = await generateDiagnosisSuggestions(allAnswersForSummary, currentSymptom);
+                
                 aiResponse = {
-                    message: 'Thank you. I will summarize your information now and share a few appointment slots.',
-                    type: 'booking_offer',
+                    message: summaryText,
+                    type: 'session_summary',
                     nextStep: 'booking_offer',
                     currentSymptom: currentSymptom,
                     questionNumber: String(questionsAskedForCurrentSymptom || maxPerSymptom),
-                    allQuestionsCompleted: true
+                    allQuestionsCompleted: true,
+                    sessionSummary: summaryText,
+                    diagnosis_suggestions: diagnosisSuggestions
                 };
             }
         }
@@ -425,11 +439,109 @@ async function detectMainSymptom(message) {
     }
 }
 
+// Generate session summary with diagnosis suggestions
+async function generateSessionSummary(allPatientAnswers, currentSymptom, patientInfo) {
+    try {
+        const summaryPrompt = `
+You are a medical AI assistant. Generate a concise summary of the patient consultation.
+
+PATIENT INFO:
+- Name: ${patientInfo?.name || 'Unknown'}
+- Age: ${patientInfo?.age || 'Unknown'}
+
+MAIN SYMPTOM: ${currentSymptom || 'Not specified'}
+
+PATIENT RESPONSES:
+${allPatientAnswers.map((qa, index) => `${index + 1}. Q: ${qa.question}\n   A: ${qa.answer}`).join('\n')}
+
+Generate a professional medical summary that includes:
+1. Chief complaint
+2. Key symptoms and characteristics
+3. Duration and severity
+4. Associated symptoms
+5. Preliminary assessment for doctor review
+
+Keep it concise but comprehensive. This will be shared with the doctor.
+`;
+
+        const response = await axios.post(config.ai.openrouterApiUrl, {
+            model: config.ai.defaultModel,
+            messages: [{ role: "system", content: summaryPrompt }],
+            temperature: 0.3,
+            max_tokens: 500
+        }, {
+            headers: {
+                'Authorization': `Bearer ${config.ai.openrouterApiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        return response?.data?.choices?.[0]?.message?.content || 'Summary generation failed';
+    } catch (error) {
+        console.error('Summary generation error:', error);
+        return `Patient consultation summary: Main symptom - ${currentSymptom}. ${allPatientAnswers.length} questions answered. Please review detailed responses with doctor.`;
+    }
+}
+
+// Generate diagnosis suggestions for doctor
+async function generateDiagnosisSuggestions(allPatientAnswers, currentSymptom) {
+    try {
+        const diagnosisPrompt = `
+You are a medical AI assistant specializing in cardiology. Based on the patient responses, suggest possible differential diagnoses for the doctor to consider.
+
+MAIN SYMPTOM: ${currentSymptom || 'Not specified'}
+
+PATIENT RESPONSES:
+${allPatientAnswers.map((qa, index) => `${index + 1}. Q: ${qa.question}\n   A: ${qa.answer}`).join('\n')}
+
+Provide 2-3 most likely differential diagnoses with brief rationale. Format as a JSON array:
+[
+  {
+    "condition": "Condition name",
+    "likelihood": "High/Medium/Low",
+    "rationale": "Brief explanation based on symptoms"
+  }
+]
+
+Focus on cardiology-related conditions. Be conservative and emphasize need for proper medical examination.
+`;
+
+        const response = await axios.post(config.ai.openrouterApiUrl, {
+            model: config.ai.defaultModel,
+            messages: [{ role: "system", content: diagnosisPrompt }],
+            temperature: 0.2,
+            max_tokens: 400
+        }, {
+            headers: {
+                'Authorization': `Bearer ${config.ai.openrouterApiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const content = response?.data?.choices?.[0]?.message?.content || '[]';
+        try {
+            return JSON.parse(content);
+        } catch (parseError) {
+            // Try to extract JSON from response
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
+            }
+            return [{ condition: "Requires medical evaluation", likelihood: "High", rationale: "Symptoms require professional assessment" }];
+        }
+    } catch (error) {
+        console.error('Diagnosis suggestions error:', error);
+        return [{ condition: "Requires medical evaluation", likelihood: "High", rationale: "Unable to generate suggestions, requires professional assessment" }];
+    }
+}
+
 module.exports = {
     getAIResponse,
     getDoctorAIResponse,
     getSymptomQuestions,
     filterAndSpellCheck,
     loadPrompt,
-    detectMainSymptom
+    detectMainSymptom,
+    generateSessionSummary,
+    generateDiagnosisSuggestions
 };

@@ -237,10 +237,11 @@ router.get('/appointments/slots', async (req, res) => {
             return res.json({ success: true, slots: finalSlots, doctor: best.doctor });
         }
 
-        // Otherwise, fetch slots for the specific doctor
+        // Otherwise, fetch slots for the specific doctor; if not found, fall back to defaults
         const doctor = await db.query('SELECT * FROM doctors WHERE doctor_id = $1', [doctorId]);
         if (doctor.rows.length === 0) {
-            return res.status(404).json({ error: 'Doctor not found' });
+            const fallbackSlots = getDefaultSlots();
+            return res.json({ success: true, slots: fallbackSlots, doctor: null });
         }
 
         const slots = await getFreeBusySlots(
@@ -357,39 +358,56 @@ AI Recommendations:
 ${aiDiagnosisHints || 'Not available'}`
         );
 
-        // Send notifications
-        const notificationResults = await Promise.all([
-            sendNotifications('patient_appointment', {
-                patient: patientData,
-                appointment: { 
-                    ...appointment, 
-                    symptoms,
-                    meet_link: calendarBooking?.meetLink || null,
-                    event_link: calendarBooking?.eventLink || null
-                },
-                doctor: doctorData
-            }),
-            sendNotifications('doctor_appointment_enhanced', {
-                doctor: doctorData,
-                patient: patientData,
-                appointment: {
-                    ...appointment,
-                    symptoms,
-                    chat_summary: chatSummary,
-                    ai_diagnosis_hints: aiDiagnosisHints,
-                    meet_link: calendarBooking?.meetLink || null,
-                    event_link: calendarBooking?.eventLink || null
-                }
-            })
-        ]);
+        // Send notifications (best-effort; do not fail booking if notifications fail)
+        let notificationResults = [];
+        let notificationsSent = false;
+        try {
+            const notifyRes = await Promise.all([
+                sendNotifications('patient_appointment', {
+                    patient: patientData,
+                    appointment: { 
+                        ...appointment, 
+                        symptoms,
+                        meet_link: calendarBooking?.meetLink || null,
+                        event_link: calendarBooking?.eventLink || null
+                    },
+                    doctor: doctorData
+                }),
+                sendNotifications('doctor_appointment_enhanced', {
+                    doctor: doctorData,
+                    patient: patientData,
+                    appointment: {
+                        ...appointment,
+                        symptoms,
+                        chat_summary: chatSummary,
+                        ai_diagnosis_hints: aiDiagnosisHints,
+                        meet_link: calendarBooking?.meetLink || null,
+                        event_link: calendarBooking?.eventLink || null
+                    }
+                })
+            ]);
+            notificationResults = notifyRes;
+            const allNotifications = notifyRes.flat();
+            const successfulNotifications = allNotifications.filter(n => n && n.success);
+            notificationsSent = successfulNotifications.length > 0;
+        } catch (e) {
+            console.warn('Notifications failed:', e?.message || e);
+        }
+
+        // Construct user-facing message summarizing outcomes
+        const msgParts = ['Appointment booked successfully.'];
+        if (!calendarBooking?.success) msgParts.push('Calendar invite could not be created.');
+        if (!notificationsSent) msgParts.push('Notifications could not be sent.');
+        const message = msgParts.join(' ');
 
         res.json({
             success: true,
             appointment,
             calendar: calendarBooking,
             notifications: notificationResults,
+            notificationsSent,
             doctorName: doctorData.name,
-            message: 'Appointment booked successfully with enhanced details sent to doctor'
+            message
         });
 
     } catch (error) {

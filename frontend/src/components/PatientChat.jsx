@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import VoiceControls from './VoiceControls.jsx';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateChange }) {
+function PatientChat({ socket, currentUser, onUserUpdate }) {
   const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -21,23 +21,6 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
   const [availableDoctors, setAvailableDoctors] = useState([]);
   const messagesEndRef = useRef(null);
 
-  const handleBackToChatTypeSelection = useCallback(() => {
-    // Reset chat state to go back to chat type selection
-    setChatStep('chat_type_selection');
-    setChatType(null);
-    setMessages([]);
-    setSessionId(null);
-    setShowRegistration(false);
-    setAppointmentSlots([]);
-    setSelectedSlot(null);
-    setChatSummary(null);
-    setAvailableDoctors([]);
-    
-    // Add welcome message and chat type selection
-    addBotMessage('messages.welcome', 'welcome', null, true);
-    addBotMessage('messages.chooseConsultationType', 'chat-type-selection', null, true);
-  }, []);
-
   // Registration form state
   const [registrationData, setRegistrationData] = useState({
     name: '',
@@ -52,14 +35,39 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const addBotMessage = (message, type = 'text', options = null, isTranslationKey = false) => {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (currentUser) {
+      initializeChat();
+    } else {
+      // Show chat type selection first
+      addBotMessage(t('messages.welcome'), 'welcome');
+      addBotMessage("Please choose your consultation type:", 'chat-type-selection');
+    }
+  }, [currentUser, t]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('bot_response', handleBotResponse);
+      socket.on('error', handleSocketError);
+
+      return () => {
+        socket.off('bot_response');
+        socket.off('error');
+      };
+    }
+  }, [socket]);
+
+  const addBotMessage = (message, type = 'text', options = null) => {
     const newMessage = {
       id: Date.now() + Math.random(), // ensure unique key per message
       text: message,
       type: 'bot',
       messageType: type,
       options: options,
-      isTranslationKey: isTranslationKey,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, newMessage]);
@@ -75,26 +83,7 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
     setMessages(prev => [...prev, newMessage]);
   };
 
-  const loadAvailableDoctorsAndSlots = useCallback(async () => {
-    try {
-      // Get available doctors
-      const doctorsResponse = await axios.get(`${BACKEND_URL}/api/doctor/available`);
-      setAvailableDoctors(doctorsResponse.data.doctors || []);
-
-      // Get available slots for first doctor (can be enhanced to show all doctors)
-      const slotsResponse = await axios.get(`${BACKEND_URL}/api/patient/appointments/slots`, {
-        params: { doctorId: 1, days: 3 }
-      });
-      setAppointmentSlots(slotsResponse.data.slots || []);
-    } catch (error) {
-      console.error('Loading slots error:', error);
-      addBotMessage('Unable to load appointment slots. Please try again.', 'error');
-    }
-  }, []);
-
-
-
-  const handleBotResponse = useCallback((data) => {
+  const handleBotResponse = (data) => {
     setIsTyping(false);
     addBotMessage(data.message, data.type, data.options);
     
@@ -105,20 +94,34 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       loadAvailableDoctorsAndSlots();
       setChatStep('booking');
     }
-  }, [loadAvailableDoctorsAndSlots]);
+  };
 
-  const handleSocketError = useCallback((error) => {
+  const handleSocketError = (error) => {
     setIsTyping(false);
     setIsLoading(false);
-    addBotMessage('messages.error', 'error', null, true);
-  }, []);
+    addBotMessage(t('messages.error'), 'error');
+  };
 
+  const handleChatTypeSelection = (type) => {
+    setChatType(type);
+    addUserMessage(type === 'voice_only' ? 
+      'Complete voice-based consultation' : 
+      'Text and voice consultation'
+    );
+    
+    if (!currentUser) {
+      addBotMessage(t('messages.patientTypeQuestion'), 'patient-type-question');
+      setChatStep('patient_type');
+    } else {
+      initializeChat();
+    }
+  };
 
-  const initializeChat = useCallback(async (selectedChatType = 'text_voice') => {
+  const initializeChat = async () => {
     try {
       const response = await axios.post(`${BACKEND_URL}/api/patient/chat/start`, {
         patientId: currentUser.patient_id,
-        chatType: selectedChatType
+        chatType: chatType || 'text_voice'
       });
       
       if (response.data.success) {
@@ -133,85 +136,23 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
         }
         
         addBotMessage(
-          selectedChatType === 'voice_only' ? 
-            'messages.voiceOnlyPrompt' :
-            'messages.textVoicePrompt',
-          'symptoms-question',
-          null,
-          true
+          chatType === 'voice_only' ? 
+            "Please tell me about your health concern. You can speak directly." :
+            "Please describe your symptoms. You can type or use voice input.",
+          'symptoms-question'
         );
         setChatStep('symptoms');
       }
     } catch (error) {
       console.error('Chat initialization error:', error);
-      addBotMessage('messages.error', 'error', null, true);
-    }
-  }, [currentUser, t]);
-
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Initialize welcome message only once
-  useEffect(() => {
-    if (!currentUser && messages.length === 0) {
-      addBotMessage('messages.welcome', 'welcome', null, true);
-      addBotMessage('messages.chooseConsultationType', 'chat-type-selection', null, true);
-    }
-  }, [currentUser, t, messages.length]);
-
-  // Handle chat initialization when user logs in after selecting chat type
-  useEffect(() => {
-    if (currentUser && chatType && chatStep === 'patient_type') {
-      initializeChat(chatType);
-    }
-  }, [currentUser, chatType, chatStep, initializeChat]);
-
-  // Notify parent component about chat state changes
-  useEffect(() => {
-    if (onChatStateChange) {
-      const isInActiveChat = chatStep !== 'chat_type_selection' && chatStep !== 'completed' && messages.length > 0;
-      onChatStateChange(isInActiveChat);
-    }
-  }, [chatStep, messages.length, onChatStateChange]);
-
-  // Browser navigation is disabled - only manual back buttons work
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('bot_response', handleBotResponse);
-      socket.on('error', handleSocketError);
-
-      return () => {
-        socket.off('bot_response');
-        socket.off('error');
-      };
-    }
-  }, [socket, handleBotResponse, handleSocketError]);
-
-
-  const handleChatTypeSelection = (type) => {
-    setChatType(type);
-    addUserMessage(type === 'voice_only' ? 
-      t('chatType.voiceOnly.title') : 
-      t('chatType.textVoice.title')
-    );
-    
-    if (!currentUser) {
-      addBotMessage('messages.patientTypeQuestion', 'patient-type-question', null, true);
-      setChatStep('patient_type');
-    } else {
-      // Initialize chat immediately for existing users
-      initializeChat(type);
+      addBotMessage(t('messages.error'), 'error');
     }
   };
-
 
   const handlePatientTypeSelect = (isExisting) => {
     if (isExisting) {
       addUserMessage(t('patient.existingPatient'));
-      addBotMessage('messages.existingPatientId', 'patient-id-request', null, true);
+      addBotMessage(t('messages.existingPatientId'), 'patient-id-request');
       setChatStep('patient_id');
     } else {
       addUserMessage(t('patient.newPatient'));
@@ -229,14 +170,14 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       if (response.data.exists) {
         onUserUpdate(response.data.patient);
         addUserMessage(`Patient ID: ${patientId}`);
-        // Will trigger initializeChat through useEffect with the selected chatType
+        // Will trigger initializeChat through useEffect
       } else {
         addBotMessage('Patient ID not found. Please register as a new patient.', 'error');
         setShowRegistration(true);
       }
     } catch (error) {
       console.error('Patient check error:', error);
-      addBotMessage('messages.error', 'error', null, true);
+      addBotMessage(t('messages.error'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -261,14 +202,14 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
         onUserUpdate(response.data.patient);
         setShowRegistration(false);
         addUserMessage(`Registered as: ${registrationData.name}`);
-        // Will trigger initializeChat through useEffect with the selected chatType
+        // Will trigger initializeChat through useEffect
       }
     } catch (error) {
       console.error('Registration error:', error);
       if (error.response?.status === 409) {
         addBotMessage('A patient with this email or mobile already exists.', 'error');
       } else {
-        addBotMessage('messages.error', 'error', null, true);
+        addBotMessage(t('messages.error'), 'error');
       }
     } finally {
       setIsLoading(false);
@@ -299,6 +240,22 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
     }
   };
 
+  const loadAvailableDoctorsAndSlots = async () => {
+    try {
+      // Get available doctors
+      const doctorsResponse = await axios.get(`${BACKEND_URL}/api/doctor/available`);
+      setAvailableDoctors(doctorsResponse.data.doctors || []);
+
+      // Get available slots for first doctor (can be enhanced to show all doctors)
+      const slotsResponse = await axios.get(`${BACKEND_URL}/api/patient/appointments/slots`, {
+        params: { doctorId: 1, days: 3 }
+      });
+      setAppointmentSlots(slotsResponse.data.slots || []);
+    } catch (error) {
+      console.error('Loading slots error:', error);
+      addBotMessage('Unable to load appointment slots. Please try again.', 'error');
+    }
+  };
 
   const handleSlotSelection = async (slot, doctorId = 1) => {
     setSelectedSlot(slot);
@@ -322,14 +279,14 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       });
 
       if (response.data.success) {
-        addUserMessage(`${t('appointment.selected')}: ${slot.display}`);
-        addBotMessage('messages.appointmentBooked', 'appointment-confirmed', null, true);
+        addUserMessage(`Selected: ${slot.display}`);
+        addBotMessage(t('messages.appointmentBooked'), 'appointment-confirmed');
         addBotMessage(
-          `${t('appointment.details')}:
+          `Your appointment details:
 📅 ${slot.display}
 👨‍⚕️ ${response.data.doctorName || 'Dr. Rajesh Kumar'}
-📱 ${t('appointment.whatsappConfirmation')}
-📧 ${t('appointment.emailConfirmation')}
+📱 You'll receive WhatsApp confirmation shortly
+📧 Email confirmation has been sent
 
 ${t('patient.appointment.confirmation')}`, 
           'confirmation'
@@ -344,7 +301,7 @@ ${t('patient.appointment.confirmation')}`,
       }
     } catch (error) {
       console.error('Booking error:', error);
-      addBotMessage('messages.error', 'error', null, true);
+      addBotMessage(t('messages.error'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -377,7 +334,7 @@ ${t('patient.appointment.confirmation')}`,
     }
   };
 
-  const handleVoiceResponse = useCallback(async (text) => {
+  const handleVoiceResponse = async (text) => {
     try {
       const response = await axios.post(`${BACKEND_URL}/api/tts`, {
         text: text,
@@ -403,7 +360,7 @@ ${t('patient.appointment.confirmation')}`,
         console.error('Browser TTS fallback failed:', fallbackErr);
       }
     }
-  }, [currentUser?.language]);
+  };
 
   // Auto-play voice responses for voice-only mode
   useEffect(() => {
@@ -413,27 +370,11 @@ ${t('patient.appointment.confirmation')}`,
         handleVoiceResponse(lastMessage.text);
       }
     }
-  }, [messages, chatType, handleVoiceResponse]);
+  }, [messages, chatType]);
 
   if (showRegistration) {
     return (
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
-        {/* Back Button */}
-        <div className="flex justify-start mb-4">
-          <button
-            onClick={() => {
-              setShowRegistration(false);
-            }}
-            className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-            title={t('common.back')}
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {t('common.back')}
-          </button>
-        </div>
-        
         <h2 className="text-2xl font-bold mb-6 text-center">
           {t('patient.registration.title')}
         </h2>
@@ -538,20 +479,6 @@ ${t('patient.appointment.confirmation')}`,
       <div className="flex flex-col h-full">
         {/* Chat Header */}
         <div className="bg-indigo-600 text-white p-4 rounded-t-lg">
-          {/* Back Button */}
-          <div className="flex justify-start mb-2">
-            <button
-              onClick={chatStep === 'chat_type_selection' ? onBack : handleBackToChatTypeSelection}
-              className="flex items-center text-indigo-100 hover:text-white transition-colors"
-              title={t('common.back')}
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              {t('common.back')}
-            </button>
-          </div>
-          
           <h2 className="text-xl font-semibold">
             {t('patient.chat.title')}
             {chatType && (
@@ -579,6 +506,7 @@ ${t('patient.appointment.confirmation')}`,
               onVoiceResponse={handleVoiceResponse}
               availableDoctors={availableDoctors}
               appointmentSlots={appointmentSlots}
+              t={t}
             />
           ))}
           
@@ -632,7 +560,7 @@ ${t('patient.appointment.confirmation')}`,
             
             {chatType === 'voice_only' && (
               <div className="mt-2 text-sm text-gray-600 text-center">
-                🎤 {t('patient.chat.voiceOnlyMode')}
+                🎤 Voice-only mode: Speak your responses
               </div>
             )}
           </div>
@@ -650,9 +578,9 @@ function MessageBubble({
   onSlotSelect, 
   onVoiceResponse, 
   availableDoctors, 
-  appointmentSlots
+  appointmentSlots, 
+  t 
 }) {
-  const { t } = useTranslation();
   const isBot = message.type === 'bot';
   
   return (
@@ -663,7 +591,7 @@ function MessageBubble({
           : 'bg-indigo-600 text-white'
       }`}>
         <div className="text-sm whitespace-pre-line">
-          {message.isTranslationKey ? t(message.text) : message.text}
+          {message.text}
         </div>
         
         {/* Chat Type Selection */}
@@ -673,15 +601,15 @@ function MessageBubble({
               onClick={() => onChatTypeSelect('voice_only')}
               className="block w-full text-left px-3 py-2 bg-green-100 text-green-800 rounded-md hover:bg-green-200"
             >
-              🎤 {t('chatType.voiceOnly.title')}
-              <div className="text-xs text-green-600 mt-1">{t('chatType.voiceOnly.description')}</div>
+              🎤 Complete Voice-Based Consultation
+              <div className="text-xs text-green-600 mt-1">For patients who prefer speaking only</div>
             </button>
             <button
               onClick={() => onChatTypeSelect('text_voice')}
               className="block w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
             >
-              💬 {t('chatType.textVoice.title')}
-              <div className="text-xs text-blue-600 mt-1">{t('chatType.textVoice.description')}</div>
+              💬 Text & Voice Consultation  
+              <div className="text-xs text-blue-600 mt-1">Type or speak - your choice</div>
             </button>
           </div>
         )}
@@ -707,7 +635,7 @@ function MessageBubble({
         {/* Appointment Booking */}
         {message.messageType === 'booking' && appointmentSlots.length > 0 && (
           <div className="mt-3 space-y-3">
-            <p className="text-sm font-medium">{t('appointment.availableSlots')}</p>
+            <p className="text-sm font-medium">Available appointment slots:</p>
             {appointmentSlots.map((slot, index) => (
               <div key={index} className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
@@ -724,7 +652,7 @@ function MessageBubble({
                   onClick={() => onSlotSelect(slot, 1)}
                   className="w-full mt-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
                 >
-{t('appointment.bookSlot')}
+                  Book this slot
                 </button>
               </div>
             ))}
@@ -738,7 +666,7 @@ function MessageBubble({
             className="mt-2 text-xs text-gray-600 hover:text-gray-800"
             title={t('patient.chat.playAudio')}
           >
-🔊 {t('patient.chat.playAudio')}
+            🔊 Play Audio
           </button>
         )}
         

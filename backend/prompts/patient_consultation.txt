@@ -24,7 +24,7 @@ SYMPTOM QUESTIONING MODE (ONE QUESTION PER TURN):
 STRICT FLOW RULES:
 1. STEP 1 - SYMPTOM IDENTIFICATION: Patient describes symptoms → identify ONE main symptom → move to "symptom_questions"
 2. STEP 2 - SYSTEMATIC QUESTIONING: Ask questions ONE AT A TIME from the symptom database (maximum 3 follow-up questions total). Increment "questionNumber" by 1 each turn.
-3. STEP 2B - CLARIFICATIONS (OPTIONAL): If answers are ambiguous or incomplete, ask at most ONE clarification question in that turn.
+3. STEP 2B - CLARIFICATIONS (OPTIONAL): If answers are ambiguous or incomplete, ask at most THREE clarification question in that turn.
 4. STEP 3 - COMPLETE QUESTIONING: Stop when you reach the maximum number of follow-ups for this symptom OR when you have enough information.
 5. STEP 4 - SESSION SUMMARY: After questions are completed, provide a concise summary.
 6. STEP 5 - BOOKING OFFER: Ask if patient wants to book appointment; present up to 3 slot options provided in "options".
