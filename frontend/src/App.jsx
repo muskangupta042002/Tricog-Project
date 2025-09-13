@@ -6,8 +6,6 @@ import PatientChat from './components/PatientChat.jsx';
 import DoctorLogin from './components/DoctorLogin.jsx';
 import DoctorDashboard from './components/DoctorDashboard.jsx';
 import LanguageSelector from './components/LanguageSelector.jsx';
-import ContactInfo from './components/ContactInfo.jsx';
-import { Box, Container, Grid, Typography } from '@mui/material';
 import { io } from 'socket.io-client';
 
 function App() {
@@ -101,7 +99,7 @@ function App() {
             <div className="flex justify-between items-center py-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <h1
+                  <h1 
                     className="text-2xl font-bold text-indigo-600 cursor-pointer hover:text-indigo-800 transition-colors"
                     onClick={handleTitleClick}
                     title="Click to go to homepage"
@@ -110,13 +108,13 @@ function App() {
                   </h1>
                 </div>
               </div>
-
+              
               <div className="flex items-center space-x-4">
-                <LanguageSelector
+                <LanguageSelector 
                   onLanguageChange={handleLanguageChange}
                   currentLanguage={i18n.language}
                 />
-
+                
                 {currentUser && (
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600">
@@ -139,8 +137,8 @@ function App() {
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Routes>
             {/* Default route - User type selection */}
-            <Route
-              path="/"
+            <Route 
+              path="/" 
               element={
                 !userType ? (
                   <UserTypeSelection onSelect={handleUserTypeSelect} />
@@ -149,16 +147,16 @@ function App() {
                 ) : (
                   <Navigate to="/doctor" replace />
                 )
-              }
+              } 
             />
-
+            
             {/* Patient routes */}
-            <Route
-              path="/patient"
+            <Route 
+              path="/patient" 
               element={
                 userType === 'patient' ? (
-                  <PatientChat
-                    socket={socket}
+                  <PatientChat 
+                    socket={socket} 
                     currentUser={currentUser}
                     onUserUpdate={setCurrentUser}
                     onBack={handleLogout}
@@ -167,16 +165,16 @@ function App() {
                 ) : (
                   <Navigate to="/" replace />
                 )
-              }
+              } 
             />
-
+            
             {/* Doctor routes */}
-            <Route
-              path="/doctor"
+            <Route 
+              path="/doctor" 
               element={
                 userType === 'doctor' && currentUser ? (
-                  <DoctorDashboard
-                    socket={socket}
+                  <DoctorDashboard 
+                    socket={socket} 
                     doctor={currentUser}
                     onDoctorUpdate={setCurrentUser}
                     onBack={handleLogout}
@@ -186,64 +184,22 @@ function App() {
                 ) : (
                   <Navigate to="/" replace />
                 )
-              }
+              } 
             />
-
+            
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
 
         {/* Footer */}
-        <>
-          {/* About Us + Contact Info */}
-          <Box
-            component="footer"
-            sx={{
-              bgcolor: '#c7d4f0ff', // darker blue for main footer
-              color: '#1b2124ff',   // light text for readability
-              mt: 8,
-              py: 6,
-              fontFamily: 'Roboto, Arial, sans-serif',
-            }}
-          >
-            <Container maxWidth="lg">
-              <Grid container spacing={4} justifyContent="space-between">
-                {/* About Us Section */}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom sx={{ color: '#212324ff', fontWeight: 1000 }}>
-                    About Us
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#0f0c0cff', lineHeight: 1.6 }}>
-                    We are Cardiology AI Assistant, providing smart solutions for heart health diagnosis using advanced AI algorithms. Our mission is to empower clinicians and patients with AI-powered insights for better cardiovascular care.
-                  </Typography>
-                </Grid>
-
-                {/* Contact Us Section */}
-                <Grid item xs={12} md={6}>
-                  <ContactInfo />
-                </Grid>
-              </Grid>
-            </Container>
-          </Box>
-
-          {/* Bottom Copyright Footer */}
-          <Box
-            component="footer"
-            sx={{
-              bgcolor: '#303F9F', // even darker blue for contrast
-              color: '#E3F2FD',
-              py: 2,
-              fontFamily: 'Roboto, Arial, sans-serif',
-            }}
-          >
-            <Container maxWidth="lg">
-              <Typography variant="body2" align="center" sx={{ color: '#BBDEFB' }}>
-                © 2024 Cardiology AI Assistant. All rights reserved.
-              </Typography>
-            </Container>
-          </Box>
-        </>
+        <footer className="bg-white border-t mt-12">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm text-gray-500">
+              {t('app.footer', '© 2024 Cardiology AI Assistant. All rights reserved.')}
+            </p>
+          </div>
+        </footer>
 
         {/* Leave Confirmation Popup */}
         {showLeaveConfirmation && (
@@ -301,7 +257,7 @@ function UserTypeSelection({ onSelect }) {
         <p className="text-lg text-gray-600 mb-12">
           {t('userType.subtitle', 'Please select your role to continue')}
         </p>
-
+        
         <div className="space-y-4">
           <button
             onClick={() => onSelect('patient')}
@@ -309,7 +265,7 @@ function UserTypeSelection({ onSelect }) {
           >
             👤 {t('userType.patient', 'I am a Patient')}
           </button>
-
+          
           <button
             onClick={() => onSelect('doctor')}
             className="w-full flex items-center justify-center px-8 py-4 border-2 border-indigo-600 text-lg font-medium rounded-lg text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
@@ -317,7 +273,7 @@ function UserTypeSelection({ onSelect }) {
             👨‍⚕️ {t('userType.doctor', 'I am a Doctor')}
           </button>
         </div>
-
+        
         <div className="mt-12 text-sm text-gray-500">
           <p>{t('userType.description', 'Secure, confidential, and AI-powered cardiology consultations')}</p>
         </div>

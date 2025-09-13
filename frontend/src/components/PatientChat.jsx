@@ -34,9 +34,9 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
     setAvailableDoctors([]);
     
     // Add welcome message and chat type selection
-    addBotMessage(t('messages.welcome'), 'welcome');
-    addBotMessage("Please choose your consultation type:", 'chat-type-selection');
-  }, [t]);
+    addBotMessage('messages.welcome', 'welcome', null, true);
+    addBotMessage('messages.chooseConsultationType', 'chat-type-selection', null, true);
+  }, []);
 
   // Registration form state
   const [registrationData, setRegistrationData] = useState({
@@ -52,13 +52,14 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const addBotMessage = (message, type = 'text', options = null) => {
+  const addBotMessage = (message, type = 'text', options = null, isTranslationKey = false) => {
     const newMessage = {
       id: Date.now() + Math.random(), // ensure unique key per message
       text: message,
       type: 'bot',
       messageType: type,
       options: options,
+      isTranslationKey: isTranslationKey,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, newMessage]);
@@ -109,8 +110,8 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
   const handleSocketError = useCallback((error) => {
     setIsTyping(false);
     setIsLoading(false);
-    addBotMessage(t('messages.error'), 'error');
-  }, [t]);
+    addBotMessage('messages.error', 'error', null, true);
+  }, []);
 
 
   const initializeChat = useCallback(async (selectedChatType = 'text_voice') => {
@@ -133,15 +134,17 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
         
         addBotMessage(
           selectedChatType === 'voice_only' ? 
-            "Please tell me about your health concern. You can speak directly." :
-            "Please describe your symptoms. You can type or use voice input.",
-          'symptoms-question'
+            'messages.voiceOnlyPrompt' :
+            'messages.textVoicePrompt',
+          'symptoms-question',
+          null,
+          true
         );
         setChatStep('symptoms');
       }
     } catch (error) {
       console.error('Chat initialization error:', error);
-      addBotMessage(t('messages.error'), 'error');
+      addBotMessage('messages.error', 'error', null, true);
     }
   }, [currentUser, t]);
 
@@ -153,8 +156,8 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
   // Initialize welcome message only once
   useEffect(() => {
     if (!currentUser && messages.length === 0) {
-      addBotMessage(t('messages.welcome'), 'welcome');
-      addBotMessage("Please choose your consultation type:", 'chat-type-selection');
+      addBotMessage('messages.welcome', 'welcome', null, true);
+      addBotMessage('messages.chooseConsultationType', 'chat-type-selection', null, true);
     }
   }, [currentUser, t, messages.length]);
 
@@ -191,12 +194,12 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
   const handleChatTypeSelection = (type) => {
     setChatType(type);
     addUserMessage(type === 'voice_only' ? 
-      'Complete voice-based consultation' : 
-      'Text and voice consultation'
+      t('chatType.voiceOnly.title') : 
+      t('chatType.textVoice.title')
     );
     
     if (!currentUser) {
-      addBotMessage(t('messages.patientTypeQuestion'), 'patient-type-question');
+      addBotMessage('messages.patientTypeQuestion', 'patient-type-question', null, true);
       setChatStep('patient_type');
     } else {
       // Initialize chat immediately for existing users
@@ -208,7 +211,7 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
   const handlePatientTypeSelect = (isExisting) => {
     if (isExisting) {
       addUserMessage(t('patient.existingPatient'));
-      addBotMessage(t('messages.existingPatientId'), 'patient-id-request');
+      addBotMessage('messages.existingPatientId', 'patient-id-request', null, true);
       setChatStep('patient_id');
     } else {
       addUserMessage(t('patient.newPatient'));
@@ -233,7 +236,7 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       }
     } catch (error) {
       console.error('Patient check error:', error);
-      addBotMessage(t('messages.error'), 'error');
+      addBotMessage('messages.error', 'error', null, true);
     } finally {
       setIsLoading(false);
     }
@@ -265,7 +268,7 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       if (error.response?.status === 409) {
         addBotMessage('A patient with this email or mobile already exists.', 'error');
       } else {
-        addBotMessage(t('messages.error'), 'error');
+        addBotMessage('messages.error', 'error', null, true);
       }
     } finally {
       setIsLoading(false);
@@ -319,14 +322,14 @@ function PatientChat({ socket, currentUser, onUserUpdate, onBack, onChatStateCha
       });
 
       if (response.data.success) {
-        addUserMessage(`Selected: ${slot.display}`);
-        addBotMessage(t('messages.appointmentBooked'), 'appointment-confirmed');
+        addUserMessage(`${t('appointment.selected')}: ${slot.display}`);
+        addBotMessage('messages.appointmentBooked', 'appointment-confirmed', null, true);
         addBotMessage(
-          `Your appointment details:
+          `${t('appointment.details')}:
 📅 ${slot.display}
 👨‍⚕️ ${response.data.doctorName || 'Dr. Rajesh Kumar'}
-📱 You'll receive WhatsApp confirmation shortly
-📧 Email confirmation has been sent
+📱 ${t('appointment.whatsappConfirmation')}
+📧 ${t('appointment.emailConfirmation')}
 
 ${t('patient.appointment.confirmation')}`, 
           'confirmation'
@@ -341,7 +344,7 @@ ${t('patient.appointment.confirmation')}`,
       }
     } catch (error) {
       console.error('Booking error:', error);
-      addBotMessage(t('messages.error'), 'error');
+      addBotMessage('messages.error', 'error', null, true);
     } finally {
       setIsLoading(false);
     }
@@ -576,7 +579,6 @@ ${t('patient.appointment.confirmation')}`,
               onVoiceResponse={handleVoiceResponse}
               availableDoctors={availableDoctors}
               appointmentSlots={appointmentSlots}
-              t={t}
             />
           ))}
           
@@ -630,7 +632,7 @@ ${t('patient.appointment.confirmation')}`,
             
             {chatType === 'voice_only' && (
               <div className="mt-2 text-sm text-gray-600 text-center">
-                🎤 Voice-only mode: Speak your responses
+                🎤 {t('patient.chat.voiceOnlyMode')}
               </div>
             )}
           </div>
@@ -648,9 +650,9 @@ function MessageBubble({
   onSlotSelect, 
   onVoiceResponse, 
   availableDoctors, 
-  appointmentSlots, 
-  t 
+  appointmentSlots
 }) {
+  const { t } = useTranslation();
   const isBot = message.type === 'bot';
   
   return (
@@ -661,7 +663,7 @@ function MessageBubble({
           : 'bg-indigo-600 text-white'
       }`}>
         <div className="text-sm whitespace-pre-line">
-          {message.text}
+          {message.isTranslationKey ? t(message.text) : message.text}
         </div>
         
         {/* Chat Type Selection */}
@@ -671,15 +673,15 @@ function MessageBubble({
               onClick={() => onChatTypeSelect('voice_only')}
               className="block w-full text-left px-3 py-2 bg-green-100 text-green-800 rounded-md hover:bg-green-200"
             >
-              🎤 Complete Voice-Based Consultation
-              <div className="text-xs text-green-600 mt-1">For patients who prefer speaking only</div>
+              🎤 {t('chatType.voiceOnly.title')}
+              <div className="text-xs text-green-600 mt-1">{t('chatType.voiceOnly.description')}</div>
             </button>
             <button
               onClick={() => onChatTypeSelect('text_voice')}
               className="block w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
             >
-              💬 Text & Voice Consultation  
-              <div className="text-xs text-blue-600 mt-1">Type or speak - your choice</div>
+              💬 {t('chatType.textVoice.title')}
+              <div className="text-xs text-blue-600 mt-1">{t('chatType.textVoice.description')}</div>
             </button>
           </div>
         )}
@@ -705,7 +707,7 @@ function MessageBubble({
         {/* Appointment Booking */}
         {message.messageType === 'booking' && appointmentSlots.length > 0 && (
           <div className="mt-3 space-y-3">
-            <p className="text-sm font-medium">Available appointment slots:</p>
+            <p className="text-sm font-medium">{t('appointment.availableSlots')}</p>
             {appointmentSlots.map((slot, index) => (
               <div key={index} className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
@@ -722,7 +724,7 @@ function MessageBubble({
                   onClick={() => onSlotSelect(slot, 1)}
                   className="w-full mt-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
                 >
-                  Book this slot
+{t('appointment.bookSlot')}
                 </button>
               </div>
             ))}
@@ -736,7 +738,7 @@ function MessageBubble({
             className="mt-2 text-xs text-gray-600 hover:text-gray-800"
             title={t('patient.chat.playAudio')}
           >
-            🔊 Play Audio
+🔊 {t('patient.chat.playAudio')}
           </button>
         )}
         

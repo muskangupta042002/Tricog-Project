@@ -361,7 +361,12 @@ ${aiDiagnosisHints || 'Not available'}`
         const notificationResults = await Promise.all([
             sendNotifications('patient_appointment', {
                 patient: patientData,
-                appointment: { ...appointment, symptoms },
+                appointment: { 
+                    ...appointment, 
+                    symptoms,
+                    meet_link: calendarBooking?.meetLink || null,
+                    event_link: calendarBooking?.eventLink || null
+                },
                 doctor: doctorData
             }),
             sendNotifications('doctor_appointment_enhanced', {
@@ -371,7 +376,9 @@ ${aiDiagnosisHints || 'Not available'}`
                     ...appointment,
                     symptoms,
                     chat_summary: chatSummary,
-                    ai_diagnosis_hints: aiDiagnosisHints
+                    ai_diagnosis_hints: aiDiagnosisHints,
+                    meet_link: calendarBooking?.meetLink || null,
+                    event_link: calendarBooking?.eventLink || null
                 }
             })
         ]);

@@ -54,7 +54,7 @@ async function getAIResponse(message, sessionData, patientId, chatType = 'text')
         
         // Content filtering and spell check
         const filteredMessage = await filterAndSpellCheck(message);
-        
+
         // Get ALL questions for current symptom from database
         let symptomQuestions = [];
         if (currentStep === 'symptom_questions' && currentSymptom) {
@@ -64,50 +64,124 @@ async function getAIResponse(message, sessionData, patientId, chatType = 'text')
             );
             symptomQuestions = symptomResult.rows[0]?.follow_up_questions || [];
         }
-        
-        // Load and customize prompt template
-        const promptTemplate = await loadPrompt('patient_consultation');
-        // Prefer session-selected language; default to English unless explicitly set at session start
-        const sessionLanguage = sessionData.language || 'en';
-        const customizedPrompt = promptTemplate
-            .replace(/{patientName}/g, patientInfo?.name || 'Unknown')
-            .replace(/{patientAge}/g, patientInfo?.age || 'Unknown')
-            .replace(/{patientLanguage}/g, sessionLanguage)
-            .replace(/{chatType}/g, chatType)
-            .replace(/{isExistingPatient}/g, isExistingPatient ? 'Yes' : 'No')
-            .replace(/{previousSessionsContext}/g, JSON.stringify(previousSessionsContext))
-            .replace(/{currentStep}/g, currentStep)
-            .replace(/{currentSymptom}/g, currentSymptom || 'None')
-            .replace(/{questionsAskedForCurrentSymptom}/g, questionsAskedForCurrentSymptom.toString())
-            .replace(/{allPatientAnswers}/g, JSON.stringify(allPatientAnswers))
-            .replace(/{symptomQuestions}/g, JSON.stringify(symptomQuestions))
-            .replace(/{currentMessage}/g, filteredMessage);
 
-        const response = await axios.post(config.ai.openrouterApiUrl, {
-            model: config.ai.defaultModel,
-            messages: [{ role: "system", content: customizedPrompt }],
-            temperature: config.ai.temperature,
-            max_tokens: config.ai.maxTokens
-        }, {
-            headers: {
-                'Authorization': `Bearer ${config.ai.openrouterApiKey}`,
-                'Content-Type': 'application/json'
+        // Determine the next single question to ask (default)
+        let nextSymptomQuestion = '';
+        if (currentStep === 'symptom_questions') {
+            // Cap by config.ai.maxQuestionsPerSymptom or available list
+            const maxQ = Math.min(config.ai.maxQuestionsPerSymptom || 3, symptomQuestions.length || 3);
+            const idx = Math.min((questionsAskedForCurrentSymptom || 0), maxQ - 1);
+            nextSymptomQuestion = symptomQuestions[idx] || symptomQuestions[0] || 'Can you tell me more about your main symptom?';
+        }
+
+        // Deterministic control to prevent loops and ensure symptom selection from rules
+        let aiResponse = null;
+        if (currentStep === 'symptom_identification' || !currentSymptom) {
+            const detected = await detectMainSymptom(filteredMessage);
+            if (detected) {
+                const followUps = await getSymptomQuestions(detected);
+                aiResponse = {
+                    message: followUps[0] || 'Can you tell me more about your main symptom?',
+                    type: 'symptom_questions',
+                    nextStep: 'symptom_questions',
+                    currentSymptom: detected,
+                    questionNumber: '1',
+                    allQuestionsCompleted: false
+                };
             }
-        });
+        } else if (currentStep === 'symptom_questions' && currentSymptom) {
+            const followUps = symptomQuestions.length ? symptomQuestions : await getSymptomQuestions(currentSymptom);
+            const maxPerSymptom = config.ai.maxQuestionsPerSymptom || 3;
+            const nextIdx = (questionsAskedForCurrentSymptom || 0);
+            const completed = nextIdx >= Math.min(maxPerSymptom, followUps.length || maxPerSymptom);
+            if (!completed) {
+                aiResponse = {
+                    message: followUps[nextIdx] || followUps[0] || 'Can you tell me more about your main symptom?',
+                    type: 'symptom_questions',
+                    nextStep: 'symptom_questions',
+                    currentSymptom: currentSymptom,
+                    questionNumber: String(nextIdx + 1),
+                    allQuestionsCompleted: false
+                };
+            } else {
+                aiResponse = {
+                    message: 'Thank you. I will summarize your information now and share a few appointment slots.',
+                    type: 'booking_offer',
+                    nextStep: 'booking_offer',
+                    currentSymptom: currentSymptom,
+                    questionNumber: String(questionsAskedForCurrentSymptom || maxPerSymptom),
+                    allQuestionsCompleted: true
+                };
+            }
+        }
 
-        let aiResponse;
-        try {
-            aiResponse = JSON.parse(response.data.choices[0].message.content);
-        } catch (parseError) {
-            console.error('JSON Parse Error:', parseError);
-            // Fallback response
-            aiResponse = {
-                message: response.data.choices[0].message.content,
-                type: "symptom_questions",
-                nextStep: currentStep,
-                questionNumber: "1",
-                allQuestionsCompleted: false
-            };
+        if (!aiResponse) {
+            // Load and customize prompt template
+            const promptTemplate = await loadPrompt('patient_consultation');
+            // Prefer session-selected language; default to English unless explicitly set at session start
+            const sessionLanguage = sessionData.language || 'en';
+            const customizedPrompt = promptTemplate
+                .replace(/{patientName}/g, patientInfo?.name || 'Unknown')
+                .replace(/{patientAge}/g, patientInfo?.age || 'Unknown')
+                .replace(/{patientLanguage}/g, sessionLanguage)
+                .replace(/{chatType}/g, chatType)
+                .replace(/{isExistingPatient}/g, isExistingPatient ? 'Yes' : 'No')
+                .replace(/{previousSessionsContext}/g, JSON.stringify(previousSessionsContext))
+                .replace(/{currentStep}/g, currentStep)
+                .replace(/{currentSymptom}/g, currentSymptom || 'None')
+                .replace(/{questionsAskedForCurrentSymptom}/g, questionsAskedForCurrentSymptom.toString())
+                .replace(/{allPatientAnswers}/g, JSON.stringify(allPatientAnswers))
+                .replace(/{symptomQuestions}/g, JSON.stringify(symptomQuestions))
+                .replace(/{nextSymptomQuestion}/g, nextSymptomQuestion)
+                .replace(/{currentMessage}/g, filteredMessage);
+
+            const response = await axios.post(config.ai.openrouterApiUrl, {
+                model: config.ai.defaultModel,
+                messages: [{ role: "system", content: customizedPrompt }],
+                temperature: config.ai.temperature,
+                max_tokens: config.ai.maxTokens
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${config.ai.openrouterApiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const rawContent = response?.data?.choices?.[0]?.message?.content || '';
+            try {
+                aiResponse = JSON.parse(rawContent);
+            } catch (parseError) {
+                console.error('JSON Parse Error:', parseError);
+                // Try to extract JSON from code fences
+                let candidate = null;
+                const fence = rawContent.match(/```json\s*([\s\S]*?)```/i) || rawContent.match(/```\s*([\s\S]*?)```/);
+                if (fence && fence[1]) candidate = fence[1];
+                if (!candidate) {
+                    // Fallback: grab first {...} block
+                    const first = rawContent.indexOf('{');
+                    const last = rawContent.lastIndexOf('}');
+                    if (first !== -1 && last !== -1 && last > first) {
+                        candidate = rawContent.slice(first, last + 1);
+                    }
+                }
+                if (candidate) {
+                    try { aiResponse = JSON.parse(candidate); } catch (_) {}
+                }
+                // Final fallback: construct deterministic single-question response
+                if (!aiResponse) {
+                    const maxPerSymptom = config.ai.maxQuestionsPerSymptom || 3;
+                    const nextQNum = Math.min((questionsAskedForCurrentSymptom || 0) + 1, maxPerSymptom);
+                    const completed = nextQNum >= maxPerSymptom || (symptomQuestions.length && nextQNum >= symptomQuestions.length);
+                    aiResponse = {
+                        message: nextSymptomQuestion,
+                        type: 'symptom_questions',
+                        nextStep: completed ? 'session_summary' : 'symptom_questions',
+                        currentSymptom: currentSymptom || null,
+                        questionNumber: String(nextQNum),
+                        allQuestionsCompleted: completed
+                    };
+                }
+            }
         }
 
         // STRICT FLOW MANAGEMENT - Update session data according to exact flow
@@ -117,10 +191,10 @@ async function getAIResponse(message, sessionData, patientId, chatType = 'text')
             currentSymptom: aiResponse.currentSymptom || currentSymptom,
             questionsAskedForCurrentSymptom: aiResponse.questionNumber ? parseInt(aiResponse.questionNumber) : questionsAskedForCurrentSymptom,
             allPatientAnswers: [...allPatientAnswers, {
-                question: sessionData.lastQuestion || 'Initial symptom description',
+                question: sessionData.lastQuestion || (aiResponse?.type === 'symptom_questions' ? 'Initial symptom question' : 'Initial symptom description'),
                 answer: filteredMessage,
                 timestamp: new Date(),
-                symptom: currentSymptom
+                symptom: aiResponse?.currentSymptom || currentSymptom
             }],
             lastQuestion: aiResponse.message,
             sessionSummary: aiResponse.sessionSummary || sessionData.sessionSummary,
@@ -134,7 +208,7 @@ async function getAIResponse(message, sessionData, patientId, chatType = 'text')
         await db.query(`
             INSERT INTO chat_interactions (session_id, question, answer, question_type, timestamp)
             VALUES ((SELECT session_id FROM chat_sessions WHERE patient_id = $1 AND status = 'active'), $2, $3, $4, NOW())
-        `, [patientId, sessionData.lastQuestion || 'Initial symptom', filteredMessage, currentStep]);
+        `, [patientId, sessionData.lastQuestion || (aiResponse?.type === 'symptom_questions' ? 'Initial symptom question' : 'Initial symptom'), filteredMessage, currentStep]);
 
         // Update session data
         await db.query(
@@ -324,10 +398,38 @@ async function getSymptomQuestions(symptom) {
     }
 }
 
+// Detect main symptom against symptom_rules using fuzzy match
+async function detectMainSymptom(message) {
+    try {
+        const res = await db.query('SELECT symptom FROM symptom_rules');
+        const list = res.rows.map(r => r.symptom.toLowerCase());
+        const text = (message || '').toLowerCase();
+        // Simple containment/variant check first
+        let best = null;
+        for (const s of list) {
+            if (text.includes(s)) { best = s; break; }
+        }
+        if (best) return best;
+        // Lightweight fuzzy: token overlap
+        let score = 0; let choice = null;
+        const tokens = new Set(text.split(/[^a-z]+/g).filter(Boolean));
+        for (const s of list) {
+            const st = new Set(s.split(/\s+/g));
+            const overlap = [...st].filter(t => tokens.has(t)).length;
+            if (overlap > score) { score = overlap; choice = s; }
+        }
+        return choice; // may be null
+    } catch (e) {
+        console.error('detectMainSymptom error:', e.message);
+        return null;
+    }
+}
+
 module.exports = {
     getAIResponse,
     getDoctorAIResponse,
     getSymptomQuestions,
     filterAndSpellCheck,
-    loadPrompt
+    loadPrompt,
+    detectMainSymptom
 };

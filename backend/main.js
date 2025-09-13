@@ -51,16 +51,17 @@ app.post('/api/chat/message', async (req, res) => {
             });
         }
 
-        // Save message to session similar to WebSocket flow
+        // Save message to session similar to WebSocket flow (append + trim window)
+        const sessBefore = await db.query('SELECT session_data FROM chat_sessions WHERE session_id = $1', [sessionId]);
+        const prevData = sessBefore.rows[0]?.session_data || {};
+        const prevMsgs = Array.isArray(prevData.messages) ? prevData.messages : [];
+        const newMsgs = [...prevMsgs, { role: 'user', content: message, timestamp: new Date() }];
+        const maxMsgs = config.chat.maxConversationMessages || 10;
+        const trimmedMsgs = newMsgs.slice(-maxMsgs);
+
         await db.query(
-            'UPDATE chat_sessions SET session_data = session_data || $1 WHERE session_id = $2',
-            [JSON.stringify({ 
-                messages: [{ 
-                    role: 'user', 
-                    content: message, 
-                    timestamp: new Date() 
-                }] 
-            }), sessionId]
+            'UPDATE chat_sessions SET session_data = $1 WHERE session_id = $2',
+            [JSON.stringify({ ...prevData, messages: trimmedMsgs }), sessionId]
         );
 
         // Process via same logic used for sockets
@@ -79,6 +80,19 @@ app.post('/api/chat/message', async (req, res) => {
             }
         } catch (e) {
             console.warn('TTS generation (REST) skipped:', e.message);
+        }
+
+        // Append assistant message to session and trim window
+        try {
+            const sessAfter = await db.query('SELECT session_data FROM chat_sessions WHERE session_id = $1', [sessionId]);
+            const prevData2 = sessAfter.rows[0]?.session_data || {};
+            const prevMsgs2 = Array.isArray(prevData2.messages) ? prevData2.messages : [];
+            const newMsgs2 = [...prevMsgs2, { role: 'assistant', content: response?.message || '', timestamp: new Date() }];
+            const maxMsgs2 = config.chat.maxConversationMessages || 10;
+            const trimmed2 = newMsgs2.slice(-maxMsgs2);
+            await db.query('UPDATE chat_sessions SET session_data = $1 WHERE session_id = $2', [JSON.stringify({ ...prevData2, messages: trimmed2 }), sessionId]);
+        } catch (e) {
+            console.warn('Failed to append assistant message (REST):', e.message);
         }
 
         return res.json({ success: true, bot: { ...response, audioUrl } });
@@ -154,15 +168,17 @@ io.on('connection', (socket) => {
             }
             
             // Save message to session
+            // Append and trim message history window
+            const sessBefore = await db.query('SELECT session_data FROM chat_sessions WHERE session_id = $1', [sessionId]);
+            const prevData = sessBefore.rows[0]?.session_data || {};
+            const prevMsgs = Array.isArray(prevData.messages) ? prevData.messages : [];
+            const newMsgs = [...prevMsgs, { role: 'user', content: message, timestamp: new Date() }];
+            const maxMsgs = config.chat.maxConversationMessages || 10;
+            const trimmedMsgs = newMsgs.slice(-maxMsgs);
+
             await db.query(
-                'UPDATE chat_sessions SET session_data = session_data || $1 WHERE session_id = $2',
-                [JSON.stringify({ 
-                    messages: [{ 
-                        role: 'user', 
-                        content: message, 
-                        timestamp: new Date() 
-                    }] 
-                }), sessionId]
+                'UPDATE chat_sessions SET session_data = $1 WHERE session_id = $2',
+                [JSON.stringify({ ...prevData, messages: trimmedMsgs }), sessionId]
             );
 
             // Process with LLM and respond
@@ -183,6 +199,19 @@ io.on('connection', (socket) => {
                 console.warn('TTS generation (socket) skipped:', e.message);
             }
             
+            // Append assistant message to session and trim window
+            try {
+                const sessAfter = await db.query('SELECT session_data FROM chat_sessions WHERE session_id = $1', [sessionId]);
+                const prevData2 = sessAfter.rows[0]?.session_data || {};
+                const prevMsgs2 = Array.isArray(prevData2.messages) ? prevData2.messages : [];
+                const newMsgs2 = [...prevMsgs2, { role: 'assistant', content: response?.message || '', timestamp: new Date() }];
+                const maxMsgs2 = config.chat.maxConversationMessages || 10;
+                const trimmed2 = newMsgs2.slice(-maxMsgs2);
+                await db.query('UPDATE chat_sessions SET session_data = $1 WHERE session_id = $2', [JSON.stringify({ ...prevData2, messages: trimmed2 }), sessionId]);
+            } catch (e) {
+                console.warn('Failed to append assistant message:', e.message);
+            }
+
             // Send response back to the same socket
             socket.emit('bot_response', {
                 message: response.message,
@@ -276,7 +305,8 @@ if (config.server.nodeEnv === 'development') {
             appointments: config.appointments,
             chat: {
                 maxMessageLength: config.chat.maxMessageLength,
-                contentFilterEnabled: config.chat.contentFilterEnabled
+                contentFilterEnabled: config.chat.contentFilterEnabled,
+                maxConversationMessages: config.chat.maxConversationMessages
             },
             tts: {
                 supportedLanguages: config.tts.supportedLanguages,

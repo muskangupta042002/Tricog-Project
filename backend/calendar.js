@@ -3,26 +3,46 @@ const fs = require('fs').promises;
 const path = require('path');
 const config = require('./config/config');
 
-// Configure OAuth2 client using centralized config (no envs)
+// Normalize Google config (supports both flat and "web" format)
+const googleCfg = config.google || {};
+const clientId = googleCfg.clientId || googleCfg.web?.client_id;
+const clientSecret = googleCfg.clientSecret || googleCfg.web?.client_secret;
+const redirectUri = googleCfg.redirectUri || (Array.isArray(googleCfg.web?.redirect_uris) ? googleCfg.web.redirect_uris[0] : undefined);
+
 const oauth2Client = new google.auth.OAuth2(
-    config.google.clientId,
-    config.google.clientSecret,
-    config.google.redirectUri
+    clientId,
+    clientSecret,
+    redirectUri
 );
 
-// Set credentials from config
-if (config.google.accessToken && config.google.refreshToken) {
+// Prefer explicit tokens; fallback to nested tokens if provided
+const accessToken = googleCfg.accessToken || googleCfg.tokens?.access_token;
+const refreshToken = googleCfg.refreshToken || googleCfg.tokens?.refresh_token;
+if (accessToken || refreshToken) {
     oauth2Client.setCredentials({
-        access_token: config.google.accessToken,
-        refresh_token: config.google.refreshToken
+        access_token: accessToken,
+        refresh_token: refreshToken
     });
 }
 
 const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
+// Ensure OAuth access token is valid (refresh only if a refresh_token is set)
+async function ensureAuth() {
+    try {
+        if (!refreshToken) return false; // No refresh token configured; skip refresh
+        await oauth2Client.getAccessToken();
+        return true;
+    } catch (e) {
+        console.error('OAuth token check/refresh failed:', e.message);
+        return false;
+    }
+}
+
 // Get free/busy information
 async function getFreeBusySlots(doctorEmail, startDate, endDate) {
     try {
+        await ensureAuth();
         const response = await calendar.freebusy.query({
             requestBody: {
                 timeMin: startDate.toISOString(),
@@ -35,7 +55,7 @@ async function getFreeBusySlots(doctorEmail, startDate, endDate) {
         return generateAvailableSlots(startDate, endDate, busySlots);
 
     } catch (error) {
-        console.error('Free/Busy Error:', error);
+        console.error('Free/Busy Error:', error?.message || error);
         // Return default slots if API fails
         return getDefaultSlots();
     }
@@ -127,6 +147,7 @@ function formatSlotTime(date) {
 // Book appointment
 async function bookAppointment(doctorEmail, patientEmail, startTime, endTime, summary, description) {
     try {
+        await ensureAuth();
         const event = {
             summary: summary,
             description: description,
@@ -148,19 +169,27 @@ async function bookAppointment(doctorEmail, patientEmail, startTime, endTime, su
                     { method: 'email', minutes: 24 * 60 }, // 24 hours
                     { method: 'popup', minutes: 30 }
                 ]
+            },
+            conferenceData: {
+                createRequest: {
+                    requestId: `meet-meeting-${Date.now()}`,
+                    conferenceSolutionKey: { type: 'hangoutsMeet' }
+                }
             }
         };
 
         const response = await calendar.events.insert({
-            calendarId: 'primary',
+            calendarId: config.google.calendarId || 'primary',
             resource: event,
-            sendUpdates: 'all'
+            sendUpdates: 'all',
+            conferenceDataVersion: 1
         });
 
         return {
             success: true,
             eventId: response.data.id,
-            eventLink: response.data.htmlLink
+            eventLink: response.data.htmlLink,
+            meetLink: response.data.hangoutLink || response.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || null
         };
 
     } catch (error) {

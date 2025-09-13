@@ -1,7 +1,10 @@
-const twilio = require('twilio');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
-const config = require('./config/config');
+import twilio from 'twilio';
+import nodemailer from 'nodemailer';
+import fetch from 'node-fetch';
+import config from './config/config.js';
+
+import dotenv from "dotenv";
+const TELEGRAM_TOKEN = config.telegram.TELEGRAM_TOKEN;
 
 // Initialize services with config
 let twilioClient = null;
@@ -26,7 +29,10 @@ try {
   console.error('Email transporter init error:', e.message);
 }
 
-const TELEGRAM_API_URL = `${config.telegram.apiUrl}${config.telegram.botToken}`;
+// Build Telegram API URL from token in config (expected key: TELEGRAM_TOKEN)
+const TELEGRAM_API_URL = config.telegram?.TELEGRAM_TOKEN
+  ? `https://api.telegram.org/bot${config.telegram.TELEGRAM_TOKEN}`
+  : null;
 
 // Send WhatsApp message via Twilio
 async function sendWhatsAppMessage(to, message) {
@@ -40,6 +46,23 @@ async function sendWhatsAppMessage(to, message) {
     return { success: true, messageId: result.sid };
   } catch (error) {
     console.error('WhatsApp Error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Send plain SMS via Twilio
+async function sendSMSMessage(to, message) {
+  if (!twilioClient) return { success: false, error: 'Twilio not configured' };
+  if (!config.twilio.smsNumber) return { success: false, error: 'SMS sender number not configured' };
+  try {
+    const result = await twilioClient.messages.create({
+      body: message,
+      from: config.twilio.smsNumber,
+      to,
+    });
+    return { success: true, messageId: result.sid };
+  } catch (error) {
+    console.error('SMS Error:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -64,17 +87,48 @@ async function sendEmail(to, subject, text, html) {
 
 // Send Telegram message
 async function sendTelegramMessage(chatId, message) {
+  if (!config.telegram?.TELEGRAM_TOKEN) return { success: false, error: 'Telegram token not configured' };
   try {
-    const response = await axios.post(`${TELEGRAM_API_URL}/sendMessage`, {
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'HTML',
+    const url = `https://api.telegram.org/bot${config.telegram.TELEGRAM_TOKEN}/getUpdates`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML',
+      }),
     });
-    return { success: true, messageId: response.data?.result?.message_id };
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.description || 'Telegram API error');
+    }
+    
+    return { success: true, messageId: data?.result?.message_id };
   } catch (error) {
     console.error('Telegram Error:', error.message);
     return { success: false, error: error.message };
   }
+}
+
+export default async function sendMessage(message, chatId = config.telegram.CHAT_ID) {
+  if (!TELEGRAM_TOKEN) throw new Error("TELEGRAM_TOKEN is not set in environment variables.");
+  if (!chatId) throw new Error("CHAT_ID is not set or provided.");
+  if (!message) throw new Error("Message is required.");
+
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text: message })
+  });
+
+  const data = await response.json();
+  return data;
 }
 
 // Determine appointment priority based on symptoms and AI hints
@@ -93,7 +147,7 @@ function determinePriority(symptoms, aiHints) {
   return 'NORMAL';
 }
 
-// Patient confirmation notification
+// Patient confirmation notification with fallback and detailed logs
 async function sendPatientAppointmentNotification(patient, appointment, doctor) {
   const appointmentTime = new Date(appointment.appointment_time);
   const formattedTime = appointmentTime.toLocaleDateString('en-IN', {
@@ -107,7 +161,8 @@ Your cardiology consultation appointment has been confirmed:
 📅 Date & Time: ${formattedTime}
 👨‍⚕️ Doctor: ${doctor.name}
 🏥 Hospital: ${doctor.hospital_name || 'Cardiology Clinic'}
-💰 Consultation Fee: ₹${doctor.consultation_fee || 800}
+🔗 Google Meet: ${appointment.meet_link || 'Link will be shared separately'}
+🔗 Calendar Event: ${appointment.event_link || 'N/A'}
 
 📍 Please arrive 15 minutes early with:
 • Valid ID proof
@@ -145,17 +200,58 @@ Thank you for choosing our cardiology services!`;
     </div>
   `;
 
-  const results = [];
-  if (patient.mobile && config.notifications.enabledChannels.whatsapp) {
-    results.push({ type: 'whatsapp', ...(await sendWhatsAppMessage(patient.mobile, message)) });
+  const attempts = [];
+  const logs = [];
+
+  // Define ordered channel attempts (WhatsApp -> SMS -> Email)
+  const tryWhatsApp = async () => {
+    if (!patient.mobile || !config.notifications.enabledChannels.whatsapp) {
+      logs.push('WhatsApp skipped: missing patient.mobile or channel disabled');
+      return { type: 'whatsapp', success: false, skipped: true };
+    }
+    const res = await sendWhatsAppMessage(patient.mobile, message);
+    logs.push(`WhatsApp ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'whatsapp', ...res };
+  };
+
+  const trySMS = async () => {
+    if (!patient.mobile || !config.notifications.enabledChannels.sms) {
+      logs.push('SMS skipped: missing patient.mobile or channel disabled');
+      return { type: 'sms', success: false, skipped: true };
+    }
+    const res = await sendSMSMessage(patient.mobile, message);
+    logs.push(`SMS ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'sms', ...res };
+  };
+
+  const tryEmail = async () => {
+    if (!patient.email || !config.notifications.enabledChannels.email) {
+      logs.push('Email skipped: missing patient.email or channel disabled');
+      return { type: 'email', success: false, skipped: true };
+    }
+    const res = await sendEmail(patient.email, 'Appointment Confirmation - Cardiology Consultation', message, htmlMessage);
+    logs.push(`Email ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'email', ...res };
+  };
+
+  // Fallback chain execution
+  let sent = false;
+  for (const fn of [tryWhatsApp, trySMS, tryEmail]) {
+    const r = await fn();
+    attempts.push(r);
+    if (r.success) { sent = true; break; }
   }
-  if (patient.email && config.notifications.enabledChannels.email) {
-    results.push({ type: 'email', ...(await sendEmail(patient.email, 'Appointment Confirmation - Cardiology Consultation', message, htmlMessage)) });
+
+  if (!sent) {
+    console.warn('Patient notification failed on all channels. Details:', logs);
+  } else {
+    console.info('Patient notification sent. Details:', logs);
   }
-  return results;
+
+  return attempts;
 }
 
-// Doctor enhanced notification
+// Doctor enhanced notification with fallback and detailed logs
 async function sendDoctorAppointmentEnhanced(doctor, patient, appointment) {
   const appointmentTime = new Date(appointment.appointment_time);
   const formattedTime = appointmentTime.toLocaleDateString('en-IN', {
@@ -179,6 +275,8 @@ async function sendDoctorAppointmentEnhanced(doctor, patient, appointment) {
 • Date & Time: ${formattedTime}
 • Status: Scheduled
 • Priority: ${priority}
+• Meet: ${appointment.meet_link || 'N/A'}
+• Event: ${appointment.event_link || 'N/A'}
 
 💬 CHAT SUMMARY:
 ${appointment.chat_summary || 'Patient described general symptoms during consultation'}
@@ -199,21 +297,74 @@ ${priority === 'URGENT' ? '🚨 URGENT: Consider prioritizing this appointment o
 
 Please review before the appointment.`;
 
-  const results = [];
+  const attempts = [];
+  const logs = [];
   const prefs = doctor.prefs || {};
-  if (prefs.telegram && doctor.telegram_id && config.notifications.enabledChannels.telegram) {
-    results.push({ type: 'telegram', ...(await sendTelegramMessage(doctor.telegram_id, message)) });
+
+  // Preferred channel order based on prefs, with sensible defaults
+  const channels = [
+    prefs.telegram && doctor.telegram_id && config.notifications.enabledChannels.telegram ? 'telegram' : null,
+    prefs.whatsapp && doctor.whatsapp_number && config.notifications.enabledChannels.whatsapp ? 'whatsapp' : null,
+    prefs.sms && doctor.mobile && config.notifications.enabledChannels.sms ? 'sms' : null,
+    prefs.email && doctor.email && config.notifications.enabledChannels.email ? 'email' : null,
+  ].filter(Boolean);
+
+  // If no preferred channels, try all enabled in default order
+  const ordered = channels.length ? channels : [
+    config.notifications.enabledChannels.telegram ? 'telegram' : null,
+    config.notifications.enabledChannels.whatsapp ? 'whatsapp' : null,
+    config.notifications.enabledChannels.sms ? 'sms' : null,
+    config.notifications.enabledChannels.email ? 'email' : null,
+  ].filter(Boolean);
+
+  const sendBy = async (channel) => {
+    switch (channel) {
+      case 'telegram': {
+        if (!doctor.telegram_id) { logs.push('Telegram skipped: doctor.telegram_id missing'); return { type: 'telegram', success: false, skipped: true }; }
+        const res = await sendTelegramMessage(doctor.telegram_id, message);
+        logs.push(`Telegram ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : JSON.stringify(res.error)}`);
+        return { type: 'telegram', ...res };
+      }
+      case 'whatsapp': {
+        if (!doctor.whatsapp_number) { logs.push('WhatsApp skipped: doctor.whatsapp_number missing'); return { type: 'whatsapp', success: false, skipped: true }; }
+        const res = await sendWhatsAppMessage(doctor.whatsapp_number, message);
+        logs.push(`WhatsApp ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+        return { type: 'whatsapp', ...res };
+      }
+      case 'sms': {
+        if (!doctor.mobile) { logs.push('SMS skipped: doctor.mobile missing'); return { type: 'sms', success: false, skipped: true }; }
+        const res = await sendSMSMessage(doctor.mobile, message);
+        logs.push(`SMS ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+        return { type: 'sms', ...res };
+      }
+      case 'email': {
+        if (!doctor.email) { logs.push('Email skipped: doctor.email missing'); return { type: 'email', success: false, skipped: true }; }
+        const res = await sendEmail(doctor.email, `${priorityEmoji} New ${priority} Priority Appointment - ${patient.name}`, message, `<pre style="font-family: monospace; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${message}</pre>`);
+        logs.push(`Email ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+        return { type: 'email', ...res };
+      }
+      default:
+        return { type: channel, success: false, error: 'Unknown channel' };
+    }
+  };
+
+  let sent = false;
+  for (const ch of ordered) {
+    const r = await sendBy(ch);
+    attempts.push(r);
+    if (r.success) { sent = true; break; }
   }
-  if (prefs.whatsapp && doctor.whatsapp_number && config.notifications.enabledChannels.whatsapp) {
-    results.push({ type: 'whatsapp', ...(await sendWhatsAppMessage(doctor.whatsapp_number, message)) });
+
+  if (!sent) {
+    console.warn('Doctor notification failed on all channels. Details:', logs);
+  } else {
+    console.info('Doctor notification sent. Details:', logs);
   }
-  if (prefs.email && doctor.email && config.notifications.enabledChannels.email) {
-    results.push({ type: 'email', ...(await sendEmail(doctor.email, `${priorityEmoji} New ${priority} Priority Appointment - ${patient.name}`, message, `<pre style="font-family: monospace; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${message}</pre>`)) });
-  }
-  return results;
+
+  return attempts;
 }
 
-// Appointment reminder
+// Appointment reminder with fallback and detailed logs
 async function sendAppointmentReminder(patient, appointment, doctor, hoursBeforeAppointment = 24) {
   const appointmentTime = new Date(appointment.appointment_time);
   const formattedTime = appointmentTime.toLocaleDateString('en-IN', {
@@ -240,14 +391,53 @@ If you need to reschedule, please contact us immediately.
 
 See you ${timeLabel}!`;
 
-  const results = [];
-  if (patient.mobile && config.notifications.enabledChannels.whatsapp) {
-    results.push({ type: 'whatsapp_reminder', ...(await sendWhatsAppMessage(patient.mobile, message)) });
+  const attempts = [];
+  const logs = [];
+
+  const tryWhatsApp = async () => {
+    if (!patient.mobile || !config.notifications.enabledChannels.whatsapp) {
+      logs.push('WhatsApp reminder skipped: missing patient.mobile or channel disabled');
+      return { type: 'whatsapp_reminder', success: false, skipped: true };
+    }
+    const res = await sendWhatsAppMessage(patient.mobile, message);
+    logs.push(`WhatsApp reminder ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'whatsapp_reminder', ...res };
+  };
+
+  const trySMS = async () => {
+    if (!patient.mobile || !config.notifications.enabledChannels.sms) {
+      logs.push('SMS reminder skipped: missing patient.mobile or channel disabled');
+      return { type: 'sms_reminder', success: false, skipped: true };
+    }
+    const res = await sendSMSMessage(patient.mobile, message);
+    logs.push(`SMS reminder ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'sms_reminder', ...res };
+  };
+
+  const tryEmail = async () => {
+    if (!patient.email || !config.notifications.enabledChannels.email) {
+      logs.push('Email reminder skipped: missing patient.email or channel disabled');
+      return { type: 'email_reminder', success: false, skipped: true };
+    }
+    const res = await sendEmail(patient.email, `Appointment Reminder - ${timeLabel === 'tomorrow' ? 'Tomorrow' : 'In 2 Hours'}`, message, `<pre style="font-family: Arial, sans-serif;">${message}</pre>`);
+    logs.push(`Email reminder ${res.success ? 'sent' : 'failed'}: ${res.success ? res.messageId : res.error}`);
+    return { type: 'email_reminder', ...res };
+  };
+
+  let sent = false;
+  for (const fn of [tryWhatsApp, trySMS, tryEmail]) {
+    const r = await fn();
+    attempts.push(r);
+    if (r.success) { sent = true; break; }
   }
-  if (patient.email && config.notifications.enabledChannels.email) {
-    results.push({ type: 'email_reminder', ...(await sendEmail(patient.email, `Appointment Reminder - ${timeLabel === 'tomorrow' ? 'Tomorrow' : 'In 2 Hours'}`, message, `<pre style="font-family: Arial, sans-serif;">${message}</pre>`)) });
+
+  if (!sent) {
+    console.warn('Appointment reminder failed on all channels. Details:', logs);
+  } else {
+    console.info('Appointment reminder sent. Details:', logs);
   }
-  return results;
+
+  return attempts;
 }
 
 // Main dispatcher
@@ -264,10 +454,11 @@ async function sendNotifications(type, data) {
   }
 }
 
-module.exports = {
+export {
   sendNotifications,
   sendPatientAppointmentNotification,
   sendDoctorAppointmentEnhanced,
   sendAppointmentReminder,
   determinePriority,
+  sendTelegramMessage,
 };

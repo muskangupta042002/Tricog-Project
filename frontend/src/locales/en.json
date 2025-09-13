@@ -53,7 +53,8 @@
       "typing": "AI Assistant is typing...",
       "startVoice": "Start Voice Input",
       "stopVoice": "Stop Voice Input",
-      "playAudio": "Play Audio Response"
+      "playAudio": "Play Audio Response",
+      "voiceOnlyMode": "Voice-only mode: Speak your responses"
     },
     "appointment": {
       "title": "Book Appointment",
@@ -61,7 +62,22 @@
       "book": "Book Appointment",
       "booked": "Appointment Booked Successfully",
       "details": "Appointment Details",
-      "confirmation": "You will receive confirmation via WhatsApp and email."
+      "confirmation": "You will receive confirmation via WhatsApp and email.",
+      "availableSlots": "Available appointment slots:",
+      "bookSlot": "Book this slot",
+      "selected": "Selected",
+      "whatsappConfirmation": "You'll receive WhatsApp confirmation shortly",
+      "emailConfirmation": "Email confirmation has been sent"
+    }
+  },
+  "chatType": {
+    "voiceOnly": {
+      "title": "Complete Voice-Based Consultation",
+      "description": "For patients who prefer speaking only"
+    },
+    "textVoice": {
+      "title": "Text & Voice Consultation",
+      "description": "Type or speak - your choice"
     }
   },
   "doctor": {
@@ -108,7 +124,12 @@
       "listening": "Listening...",
       "processing": "Processing...",
       "startListening": "Start Voice Query",
-      "stopListening": "Stop Listening"
+      "stopListening": "Stop Listening",
+      "tryAsking": "Try asking:",
+      "example1": "How many appointments do I have today?",
+      "example2": "Show me my next appointment",
+      "example3": "What's my schedule for tomorrow?",
+      "example4": "How many patients did I see this week?"
     }
   },
   "language": {
@@ -128,7 +149,10 @@
     "appointmentOffer": "Based on your symptoms, I recommend booking an appointment. Here are available slots:",
     "appointmentBooked": "Your appointment has been booked successfully!",
     "error": "I'm sorry, something went wrong. Please try again.",
-    "thankYou": "Thank you for using our service!"
+    "thankYou": "Thank you for using our service!",
+    "chooseConsultationType": "Please choose your consultation type:",
+    "voiceOnlyPrompt": "Please tell me about your health concern. You can speak directly.",
+    "textVoicePrompt": "Please describe your symptoms. You can type or use voice input."
   },
   "voice": {
     "notSupported": "Voice input is not supported in your browser",

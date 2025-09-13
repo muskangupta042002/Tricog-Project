@@ -483,12 +483,12 @@ function VoiceTab({ voiceQuery, voiceResponse, isVoiceLoading, onVoiceQuery, t }
 
       {/* Example Queries */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="font-medium text-gray-900 mb-3">Try asking:</h4>
+        <h4 className="font-medium text-gray-900 mb-3">{t('doctor.voice.tryAsking')}</h4>
         <ul className="text-sm text-gray-600 space-y-1">
-          <li>• "How many appointments do I have today?"</li>
-          <li>• "Show me my next appointment"</li>
-          <li>• "What's my schedule for tomorrow?"</li>
-          <li>• "How many patients did I see this week?"</li>
+          <li>• {t('doctor.voice.example1')}</li>
+          <li>• {t('doctor.voice.example2')}</li>
+          <li>• {t('doctor.voice.example3')}</li>
+          <li>• {t('doctor.voice.example4')}</li>
         </ul>
       </div>
     </div>

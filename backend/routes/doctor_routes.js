@@ -31,7 +31,7 @@ router.get('/available', async (req, res) => {
     }
 });
 
-// Doctor login/register
+// Doctor login/register (idempotent by normalized mobile)
 router.post('/login', async (req, res) => {
     try {
         const { mobile, name } = req.body;
@@ -41,29 +41,56 @@ router.post('/login', async (req, res) => {
                 error: 'Mobile number and name are required' 
             });
         }
-        
-        // Check if doctor exists
+
+        // Normalize mobile to a consistent format (E.164-like; default +91 for 10-digit numbers)
+        const normalizeMobile = (m) => {
+            if (!m) return '';
+            const digits = String(m).replace(/\D/g, ''); // keep only digits
+            if (digits.length === 10) return `+91${digits}`; // assume India
+            if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`; // already has 91
+            return m.toString().replace(/\s/g, ''); // fallback: strip spaces
+        };
+
+        const normalized = normalizeMobile(mobile);
+        const rawNoSpace = String(mobile).replace(/\s/g, '');
+        const digitsOnly = String(mobile).replace(/\D/g, '');
+
+        // Try to find existing doctor by any of the common representations
         let result = await db.query(
-            'SELECT * FROM doctors WHERE mobile = $1',
-            [mobile]
+            `SELECT * FROM doctors WHERE mobile = $1 OR mobile = $2 OR mobile = $3 LIMIT 1`,
+            [normalized, rawNoSpace, digitsOnly]
         );
         
         let doctor;
         let isFirstLogin = false;
         
         if (result.rows.length === 0) {
-            // Register new doctor
+            // Register new doctor with normalized mobile
             result = await db.query(`
                 INSERT INTO doctors (name, mobile, prefs)
                 VALUES ($1, $2, $3)
                 RETURNING *
-            `, [name, mobile, JSON.stringify({ telegram: false, whatsapp: false, email: false })]);
+            `, [name, normalized, JSON.stringify({ telegram: false, whatsapp: false, email: false })]);
             
             doctor = result.rows[0];
             isFirstLogin = true;
         } else {
-            // Existing doctor
+            // Existing doctor found
             doctor = result.rows[0];
+
+            // Migrate stored mobile to normalized format if different
+            if (doctor.mobile !== normalized) {
+                try {
+                    const upd = await db.query(
+                        'UPDATE doctors SET mobile = $1 WHERE doctor_id = $2 RETURNING *',
+                        [normalized, doctor.doctor_id]
+                    );
+                    if (upd.rows[0]) doctor = upd.rows[0];
+                } catch (e) {
+                    // If unique constraint prevents update, ignore and keep existing
+                    console.warn('Mobile normalization skipped:', e.message);
+                }
+            }
             
             // Update name if different
             if (doctor.name !== name) {
