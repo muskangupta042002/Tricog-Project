@@ -534,7 +534,7 @@ ${t('patient.appointment.confirmation')}`,
     <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg h-96">
       <div className="flex flex-col h-full">
         {/* Chat Header */}
-        <div className="bg-indigo-600 text-white p-4 rounded-t-lg">
+        <div className="bg-indigo-600 text-white p-4 rounded-t-lg ">
           {/* Back Button */}
           <div className="flex justify-start mb-2">
             <button

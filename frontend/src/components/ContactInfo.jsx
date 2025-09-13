@@ -11,7 +11,7 @@ function ContactInfo() {
       <Typography 
         variant="h6" 
         gutterBottom 
-        sx={{ color: '#E3F2FD', fontWeight: 1000 }}
+        sx={{ color: '#372923ff', fontWeight: 1000 }}
       >
         Contact Us
       </Typography>
@@ -20,7 +20,7 @@ function ContactInfo() {
       <Stack direction="row" alignItems="flex-start" spacing={1} sx={{ mb: 1 }}>
         <LocationOnIcon sx={{ color: '#314e66ff' }} />
         <Typography variant="body2" sx={{ color: '#372923ff', lineHeight: 1.6 }}>
-          <strong style={{ color: '#e02a2aff' }}>Tricog Health India Private Limited</strong><br />
+          <strong style={{ color: '#482ae0ff' }}>Tricog Health India Private Limited</strong><br />
           India<br />
           Old No 82, New No 3 PID No 5-24-3<br />
           2nd Main Road, Vyalikaval Extension<br />
