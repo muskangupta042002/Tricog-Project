@@ -1,0 +1,219 @@
+{
+  "app": {
+    "title": "कार्डिओलॉजी AI सहाय्यक",
+    "footer": "© 2024 कार्डिओलॉजी AI सहाय्यक. सर्व हक्क राखीव."
+  },
+  "common": {
+    "loading": "लोड होत आहे...",
+    "error": "त्रुटी",
+    "success": "यशस्वी",
+    "cancel": "रद्द करा",
+    "confirm": "पुष्टी करा",
+    "save": "जतन करा",
+    "delete": "हटवा",
+    "edit": "संपादन",
+    "close": "बंद करा",
+    "submit": "सबमिट",
+    "login": "लॉगिन",
+    "logout": "लॉगआउट",
+    "back": "मागे",
+    "next": "पुढे",
+    "previous": "मागील",
+    "yes": "होय",
+    "no": "नाही"
+  },
+  "userType": {
+    "title": "स्वागत",
+    "subtitle": "पुढे जाण्यासाठी तुमची भूमिका निवडा",
+    "patient": "मी एक रुग्ण आहे",
+    "doctor": "मी एक डॉक्टर आहे",
+    "description": "सुरक्षित, गुप्त आणि AI-आधारित हृदयरोग सल्ला"
+  },
+  "patient": {
+    "title": "रुग्ण पोर्टल",
+    "newPatient": "नवीन रुग्ण",
+    "existingPatient": "विद्यमान रुग्ण",
+    "registration": {
+      "title": "रुग्ण नोंदणी",
+      "name": "पूर्ण नाव",
+      "email": "ईमेल पत्ता",
+      "mobile": "मोबाइल नंबर",
+      "age": "वय",
+      "gender": "लिंग",
+      "male": "पुरुष",
+      "female": "महिला",
+      "other": "इतर",
+      "language": "पसंतीची भाषा",
+      "register": "नोंदणी करा"
+    },
+    "chat": {
+      "title": "कार्डिओलॉजी सल्ला",
+      "placeholder": "तुमची लक्षणे सांगा...",
+      "send": "पाठवा",
+      "typing": "AI सहाय्यक टाइप करत आहे...",
+      "startVoice": "आवाज इनपुट सुरू करा",
+      "stopVoice": "आवाज इनपुट थांबवा",
+      "playAudio": "ऑडिओ प्रतिसाद प्ले करा",
+      "chatTypeSelection": {
+        "voiceOnly": "पूर्ण आवाज आधारित सल्ला",
+        "textVoice": "मजकूर आणि आवाज सल्ला",
+        "voiceOnlyDesc": "फक्त बोलणे पसंत करणाऱ्या रुग्णांसाठी",
+        "textVoiceDesc": "टाइप करा किंवा बोला - तुमची निवड"
+      }
+    },
+    "appointment": {
+      "title": "अपॉइंटमेंट बुक करा",
+      "selectTime": "तुमचा पसंतीचा वेळ निवडा:",
+      "book": "अपॉइंटमेंट बुक करा",
+      "booked": "अपॉइंटमेंट यशस्वीरित्या बुक झाले",
+      "details": "अपॉइंटमेंट तपशील",
+      "confirmation": "तुम्हाला व्हाट्सअप आणि ईमेलद्वारे पुष्टी मिळेल."
+    }
+  },
+  "doctor": {
+    "title": "डॉक्टर पोर्टल",
+    "login": {
+      "title": "डॉक्टर लॉगिन",
+      "mobile": "मोबाइल नंबर",
+      "name": "पूर्ण नाव",
+      "login": "लॉगिन"
+    },
+    "dashboard": {
+      "title": "डॅशबोर्ड",
+      "todayAppointments": "आजच्या अपॉइंटमेंट",
+      "upcomingAppointments": "येणारे अपॉइंटमेंट",
+      "patientStats": "रुग्ण आकडेवारी",
+      "nextAppointment": "पुढील अपॉइंटमेंट",
+      "noAppointments": "कोणतेही अपॉइंटमेंट शेड्यूल नाहीत"
+    },
+    "preferences": {
+      "title": "सूचना प्राधान्ये",
+      "email": "ईमेल सूचना",
+      "telegram": "टेलिग्राम सूचना",
+      "whatsapp": "व्हाट्सअप सूचना",
+      "telegramId": "टेलिग्राम ID",
+      "whatsappNumber": "व्हाट्सअप नंबर",
+      "emailAddress": "ईमेल पत्ता",
+      "save": "प्राधान्ये जतन करा"
+    },
+    "appointments": {
+      "title": "अपॉइंटमेंट",
+      "patient": "रुग्ण",
+      "time": "वेळ",
+      "status": "स्थिती",
+      "symptoms": "लक्षणे",
+      "notes": "नोट्स",
+      "scheduled": "नियोजित",
+      "completed": "पूर्ण",
+      "cancelled": "रद्द",
+      "inProgress": "प्रगतीपथावर",
+      "noShow": "आला नाही"
+    },
+    "voice": {
+      "askQuery": "तुमच्या अपॉइंटमेंटबद्दल काहीही विचारा...",
+      "listening": "ऐकत आहे...",
+      "processing": "प्रक्रिया करत आहे...",
+      "startListening": "आवाज प्रश्न सुरू करा",
+      "stopListening": "ऐकणे थांबवा"
+    }
+  },
+  "language": {
+    "selector": "भाषा",
+    "english": "इंग्रजी",
+    "hindi": "हिंदी",
+    "telugu": "तेलुगू",
+    "tamil": "तमिळ",
+    "marathi": "मराठी",
+    "malayalam": "मलयाळम"
+  },
+  "messages": {
+    "welcome": "नमस्कार! मी तुमचा AI कार्डिओलॉजी सहाय्यक आहे. आज मी तुम्हाला कशी मदत करू शकतो?",
+    "patientTypeQuestion": "तुम्ही विद्यमान रुग्ण आहात की नवीन रुग्ण?",
+    "existingPatientId": "कृपया तुमची रुग्ण ID द्या:",
+    "symptomsQuestion": "कृपया तुमच्या लक्षणांचे तपशीलवार वर्णन करा:",
+    "followUpQuestions": "माझ्याकडे काही अनुवर्ती प्रश्न आहेत:",
+    "appointmentOffer": "तुमच्या लक्षणांच्या आधारे, मी अपॉइंटमेंट बुक करण्याची शिफारस करतो. हे उपलब्ध स्लॉट आहेत:",
+    "appointmentBooked": "तुमचे अपॉइंटमेंट यशस्वीरित्या बुक झाले!",
+    "error": "क्षमस्व, काहीतरी चूक झाली. कृपया पुन्हा प्रयत्न करा.",
+    "thankYou": "आमची सेवा वापरल्याबद्दल धन्यवाद!",
+    "chatTypeSelection": "कृपया तुमच्या सल्ल्याचा प्रकार निवडा:",
+    "emergencyWarning": "ही आपत्कालीन परिस्थिती वाटते. कृपया ताबडतोब वैद्यकीय मदत घ्या!",
+    "sessionSummary": "आमच्या चर्चेचा सारांश:",
+    "bookingConfirmation": "तुमच्या अपॉइंटमेंटची माहिती व्हाट्सअप आणि ईमेलवर पाठवली आहे."
+  },
+  "voice": {
+    "notSupported": "तुमच्या ब्राउझरमध्ये आवाज इनपुट समर्थित नाही",
+    "microphoneError": "मायक्रोफोन प्रवेश नाकारला",
+    "listeningError": "आवाज इनपुट ऐकण्यात त्रुटी"
+  },
+  "notifications": {
+    "appointmentBooked": "अपॉइंटमेंट यशस्वीरित्या बुक झाले",
+    "preferencesUpdated": "प्राधान्ये यशस्वीरित्या अपडेट झाली",
+    "error": "एक त्रुटी झाली",
+    "emergency": "आपत्कालीन परिस्थिती ओळखली",
+    "sessionCompleted": "सल्ला सत्र पूर्ण"
+  },
+  "symptoms": {
+    "chestPain": "छातीत दुखी",
+    "shortnessOfBreath": "श्वास घेण्यात अडचण",
+    "palpitations": "हृदयाचे वेगवान ठोके",
+    "dizziness": "चक्कर येणे",
+    "fatigue": "थकवा",
+    "nausea": "मळमळ",
+    "sweating": "घाम",
+    "headache": "डोकेदुखी",
+    "backPain": "पाठदुखी",
+    "legSwelling": "पायांची सूज"
+  },
+  "severity": {
+    "mild": "सौम्य",
+    "moderate": "मध्यम",
+    "severe": "तीव्र",
+    "scale": "1-10 स्केलवर",
+    "emergency": "आपत्काल"
+  },
+  "timeframes": {
+    "now": "आता",
+    "today": "आज",
+    "yesterday": "काल",
+    "thisWeek": "या आठवड्यात",
+    "lastWeek": "गेल्या आठवड्यात",
+    "thisMonth": "या महिन्यात",
+    "fewMinutes": "काही मिनिटे",
+    "fewHours": "काही तास",
+    "fewDays": "काही दिवस"
+  },
+  "questions": {
+    "when": "कधी",
+    "where": "कुठे",
+    "how": "कसे",
+    "howLong": "किती वेळ",
+    "howOften": "किती वेळा",
+    "severity": "तीव्रता किती",
+    "triggers": "कशामुळे",
+    "relief": "काय आराम देते",
+    "associated": "इतर लक्षणे",
+    "family": "कौटुंबिक इतिहास",
+    "medications": "औषधे",
+    "previousTreatment": "मागील उपचार"
+  },
+  "responses": {
+    "yes": "होय",
+    "no": "नाही",
+    "sometimes": "कधी कधी",
+    "often": "वारंवार",
+    "rarely": "क्वचितच",
+    "never": "कधीच नाही",
+    "unsure": "खात्री नाही",
+    "getting": "बरे होत आहे",
+    "worsening": "वाढत आहे",
+    "same": "तसेच आहे"
+  },
+  "emergency": {
+    "call": "ताबडतोब कॉल करा",
+    "hospital": "हॉस्पिटलला जा",
+    "urgent": "तातडीचे",
+    "warning": "चेतावणी",
+    "symptoms": "आपत्कालीन लक्षणे"
+  }
+}

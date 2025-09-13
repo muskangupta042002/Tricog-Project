@@ -1,0 +1,143 @@
+{
+  "app": {
+    "title": "Cardiology AI Assistant",
+    "footer": "© 2024 Cardiology AI Assistant. All rights reserved."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "submit": "Submit",
+    "login": "Login",
+    "logout": "Logout",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "userType": {
+    "title": "Welcome",
+    "subtitle": "Please select your role to continue",
+    "patient": "I am a Patient",
+    "doctor": "I am a Doctor",
+    "description": "Secure, confidential, and AI-powered cardiology consultations"
+  },
+  "patient": {
+    "title": "Patient Portal",
+    "newPatient": "New Patient",
+    "existingPatient": "Existing Patient",
+    "registration": {
+      "title": "Patient Registration",
+      "name": "Full Name",
+      "email": "Email Address",
+      "mobile": "Mobile Number",
+      "age": "Age",
+      "gender": "Gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "language": "Preferred Language",
+      "register": "Register"
+    },
+    "chat": {
+      "title": "Cardiology Consultation",
+      "placeholder": "Describe your symptoms...",
+      "send": "Send",
+      "typing": "AI Assistant is typing...",
+      "startVoice": "Start Voice Input",
+      "stopVoice": "Stop Voice Input",
+      "playAudio": "Play Audio Response"
+    },
+    "appointment": {
+      "title": "Book Appointment",
+      "selectTime": "Select your preferred time:",
+      "book": "Book Appointment",
+      "booked": "Appointment Booked Successfully",
+      "details": "Appointment Details",
+      "confirmation": "You will receive confirmation via WhatsApp and email."
+    }
+  },
+  "doctor": {
+    "title": "Doctor Portal",
+    "login": {
+      "title": "Doctor Login",
+      "mobile": "Mobile Number",
+      "name": "Full Name",
+      "login": "Login"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "todayAppointments": "Today's Appointments",
+      "upcomingAppointments": "Upcoming Appointments",
+      "patientStats": "Patient Statistics",
+      "nextAppointment": "Next Appointment",
+      "noAppointments": "No appointments scheduled"
+    },
+    "preferences": {
+      "title": "Notification Preferences",
+      "email": "Email Notifications",
+      "telegram": "Telegram Notifications",
+      "whatsapp": "WhatsApp Notifications",
+      "telegramId": "Telegram ID",
+      "whatsappNumber": "WhatsApp Number",
+      "emailAddress": "Email Address",
+      "save": "Save Preferences"
+    },
+    "appointments": {
+      "title": "Appointments",
+      "patient": "Patient",
+      "time": "Time",
+      "status": "Status",
+      "symptoms": "Symptoms",
+      "notes": "Notes",
+      "scheduled": "Scheduled",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "inProgress": "In Progress",
+      "noShow": "No Show"
+    },
+    "voice": {
+      "askQuery": "Ask me anything about your appointments...",
+      "listening": "Listening...",
+      "processing": "Processing...",
+      "startListening": "Start Voice Query",
+      "stopListening": "Stop Listening"
+    }
+  },
+  "language": {
+    "selector": "Language",
+    "english": "English",
+    "telugu": "Telugu",
+    "tamil": "Tamil",
+    "kannada": "Kannada",
+    "malayalam": "Malayalam"
+  },
+  "messages": {
+    "welcome": "Hello! I'm your AI cardiology assistant. How can I help you today?",
+    "patientTypeQuestion": "Are you an existing patient or a new patient?",
+    "existingPatientId": "Please provide your patient ID:",
+    "symptomsQuestion": "Please describe your symptoms in detail:",
+    "followUpQuestions": "I have a few follow-up questions:",
+    "appointmentOffer": "Based on your symptoms, I recommend booking an appointment. Here are available slots:",
+    "appointmentBooked": "Your appointment has been booked successfully!",
+    "error": "I'm sorry, something went wrong. Please try again.",
+    "thankYou": "Thank you for using our service!"
+  },
+  "voice": {
+    "notSupported": "Voice input is not supported in your browser",
+    "microphoneError": "Microphone access denied",
+    "listeningError": "Error listening to voice input"
+  },
+  "notifications": {
+    "appointmentBooked": "Appointment booked successfully",
+    "preferencesUpdated": "Preferences updated successfully",
+    "error": "An error occurred"
+  }
+}
