@@ -1,5 +1,7 @@
 # Node.js
 backend/node_modules/
+frontend/node_modules/
+
 .env
 *.env
 npm-debug.log

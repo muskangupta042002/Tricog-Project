@@ -4,6 +4,10 @@
   "description": "Frontend for Doctor AI Assistant - Cardiology Consultation Platform",
   "private": true,
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.2",
     "doctor-ai-assistant-frontend": "file:",
