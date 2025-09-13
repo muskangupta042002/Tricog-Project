@@ -89,7 +89,7 @@ async function sendEmail(to, subject, text, html) {
 async function sendTelegramMessage(chatId, message) {
   if (!config.telegram?.TELEGRAM_TOKEN) return { success: false, error: 'Telegram token not configured' };
   try {
-    const url = `https://api.telegram.org/bot${config.telegram.TELEGRAM_TOKEN}/sendMessage`;
+    const url = `https://api.telegram.org/bot${config.telegram.TELEGRAM_TOKEN}/getUpdates`;
 
     const response = await fetch(url, {
       method: 'POST',
