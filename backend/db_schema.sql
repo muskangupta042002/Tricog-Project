@@ -86,9 +86,9 @@ CREATE TABLE chat_interactions (
 
 -- Enhanced seed data
 INSERT INTO doctors (name, mobile, email, specialization, experience_years, qualification, hospital_name, consultation_fee, telegram_id, whatsapp_number, prefs) VALUES
-('Dr. Rajesh Kumar', '+916393094538', 'muskangupta072000@gmail.com', 'Cardiology', 15, 'MD Cardiology, DM Interventional Cardiology', 'Apollo Hospital', 800.00, '@rajesh_doc', '+919876543210', 
+('Dr. Rajesh Kumar', '+1111111111', 'musk12@gmail.com', 'Cardiology', 15, 'MD Cardiology, DM Interventional Cardiology', 'Apollo Hospital', 800.00, '@rajesh_doc', '+919876543210', 
  '{"telegram": true, "whatsapp": true, "email": true}'),
-('Dr. Priya Sharma', '+916387999999', 'shraddha.vasudeva@gameskraft.com', 'Cardiology', 12, 'MD Medicine, DM Cardiology', 'Fortis Hospital', 700.00, '@priya_cardio', '+919876543211', 
+('Dr. Priya Sharma', '+1111111112', 'shraddhaeva@gameskraft.com', 'Cardiology', 12, 'MD Medicine, DM Cardiology', 'Fortis Hospital', 700.00, '@priya_cardio', '+919876543211', 
  '{"telegram": false, "whatsapp": true, "email": true}');
 
 -- Enhanced symptom rules with severity indicators
@@ -150,6 +150,6 @@ INSERT INTO symptom_rules (symptom, follow_up_questions, severity_indicators, em
 
 -- Sample patient data
 INSERT INTO patients (name, email, gender, age, mobile, language, medical_history) VALUES
-('John Doe', 'muskan.18228@knit.ac.in', 'male', 45, '+919123456789', 'en', '{"previous_conditions": ["hypertension"], "medications": ["amlodipine"], "allergies": []}'),
-('Priya Sharma', 'princyjainhack@gmail.com', 'female', 38, '+919876543211', 'te', '{"previous_conditions": [], "medications": [], "allergies": ["penicillin"]}'),
-('Ravi Kumar', 'shraddhavasudeva@gmail.com', 'male', 52, '+919876543212', 'te', '{"previous_conditions": ["diabetes", "high cholesterol"], "medications": ["metformin", "atorvastatin"], "allergies": []}');
+('John Doe', 'musk228@knit.ac.in', 'male', 45, '+9191222223456789', 'en', '{"previous_conditions": ["hypertension"], "medications": ["amlodipine"], "allergies": []}'),
+('Priya Sharma', 'pr2ack@gmail.com', 'female', 38, '+2222222', 'te', '{"previous_conditions": [], "medications": [], "allergies": ["penicillin"]}'),
+('Ravi Kumar', 'shraddh2mail.com', 'male', 52, '+919222876543212', 'te', '{"previous_conditions": ["diabetes", "high cholesterol"], "medications": ["metformin", "atorvastatin"], "allergies": []}');
