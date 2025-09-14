@@ -50,3 +50,6 @@ coverage/
 
 # Optional eslint cache
 .eslintcache
+
+backend/db_schema.sql
+backend/symptom_rules_insert.sql
